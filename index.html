@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{
   --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F4F6FA; --ink:#14223D; --ink-2:#4F5D78; --line:#D3DBE7;
@@ -208,6 +209,66 @@ select.kitcat{font-weight:600;min-width:110px}
 .accbody{padding:4px 16px 16px;border-top:1px solid var(--line)}
 .mmh3{font-size:15px;margin:16px 0 8px}
 @media (max-width:640px){ .mmrow{grid-template-columns:1fr} }
+:root{--dash-1:#0033A0;--dash-2:#418FDE;--dash-3:#26A69A}
+:root[data-theme="dark"]{--dash-1:#5B8DEF;--dash-2:#6FAAE8;--dash-3:#3BBFB2}
+.dash{display:flex;flex-direction:column;gap:16px}
+#dashBody{display:flex;flex-direction:column;gap:18px}
+.dexpl{margin:10px 2px 0;font-size:12.5px;line-height:1.5;color:var(--ink-2);background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:10px 14px}
+.dexpl b{color:var(--ink)}
+.dtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.dfilters{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.ddrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+details.dd{position:relative}
+details.dd summary{list-style:none;cursor:pointer;border:1px solid var(--field-line);background:var(--field);border-radius:999px;padding:5px 12px;font-size:14px;white-space:nowrap}
+details.dd summary::-webkit-details-marker{display:none}
+details.dd[open] summary{border-color:var(--accent)}
+.ddpop{position:absolute;z-index:12;top:calc(100% + 6px);left:0;min-width:260px;max-width:min(360px,90vw);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(10,18,35,.18);padding:10px}
+.ddlist{max-height:280px;overflow:auto}
+.dhead{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;flex-wrap:wrap;padding:20px 24px;border-radius:14px;background:#F4F6F9;border:1px solid var(--line);border-left:6px solid #0033A0;color:var(--ink)}
+:root[data-theme="dark"] .dhead{background:var(--surface-2);border-left-color:var(--accent)}
+.dhead h1{margin:0;color:var(--dash-1);font-size:26px;letter-spacing:-.01em}
+.dsub{margin:4px 0 0;color:var(--ink-2);font-size:14px}
+.dmeta{display:flex;flex-direction:column;gap:2px;max-width:560px;font-size:13px;color:var(--ink-2);text-align:right}
+.dmeta b{color:var(--ink);font-size:12px;letter-spacing:.02em}
+.dmeta .muted{color:var(--ink-2)}
+.dkpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.dkpi{display:flex;flex-direction:column;gap:2px;padding:14px 18px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.dkpi span{font-size:13px;color:var(--ink-2)}
+.dkpi b{font-size:34px;line-height:1.1;font-weight:700;letter-spacing:-.02em;color:var(--dash-1)}
+.dkpi.dk1{background:#0033A0;border-color:#0033A0}.dkpi.dk1 span{color:#D6E2F8}.dkpi.dk1 b{color:#fff}
+.dkpi.dk2{background:#E6EEFB;border-color:#C9D7F0}.dkpi.dk2 b{color:#0033A0}
+:root[data-theme="dark"] .dkpi.dk2{background:#18213A;border-color:#2B3B63}:root[data-theme="dark"] .dkpi.dk2 b{color:#8FB2F5}
+.drow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.dcard.span2{grid-column:span 2}.dcard.span3{grid-column:span 3}
+.dcard h3{margin:0 0 12px;font-size:15px;color:var(--dash-1);font-weight:700}
+.dnote{margin:10px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.45}
+.dt{font-size:13px}.dt th{background:transparent;border-bottom:2px solid var(--ink-2);font-size:12.5px}
+.dt td,.dt th{padding:6px 8px}
+.dunit{font-size:11px;line-height:1.1}
+.dt tr.grp td{font-weight:700;background:var(--surface-2)}
+.dt td.sub{padding-left:22px}
+.dt tr.tot td{font-weight:700;border-top:2px solid var(--ink-2)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.hb{display:flex;flex-direction:column;gap:7px}
+.hbrow{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(60px,1fr) 58px 46px;gap:10px;align-items:center;font-size:13px}
+.hbl{white-space:normal;line-height:1.25}
+.hbt{height:10px;background:var(--surface-2);border-radius:999px;overflow:hidden}
+.hbt span{display:block;height:100%;border-radius:999px}
+.hbv{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.hbp{color:var(--ink-2);font-size:12px;min-width:44px;text-align:right}
+.hist{display:flex;align-items:flex-end;gap:6px;height:220px;padding-top:18px;overflow-x:auto}
+.hcol{flex:1 0 38px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;gap:4px}
+.hval{font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.hbar{width:70%;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;min-height:2px}
+.hbar span{display:block}
+.hlab{font-size:11px;color:var(--ink-2);text-align:center;line-height:1.2}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12.5px;color:var(--ink-2)}
+.dfoot{font-size:12px;color:var(--ink-2);text-align:center;margin:4px 0 0}
+body.capturing .noprint{display:none!important}
+.printonly{display:none}
+body.capturing .printonly{display:block}
+@media (max-width:1000px){ .drow{grid-template-columns:1fr} .dcard.span2,.dcard.span3{grid-column:auto} .dmeta{text-align:left} }
 .top{flex-wrap:wrap}
 @media (max-width:640px){
   .brand small{display:none}
@@ -730,8 +791,9 @@ function renderRail(){
 function render(){
   const wrap=document.querySelector('.wrap'), gb=$('#btnGuide');
   if(S.guide){ wrap.classList.add('guide'); gb.querySelector('span').textContent='Volver a la herramienta'; gb.setAttribute('aria-pressed','true'); $('#main').innerHTML=viewGuide(); document.querySelectorAll('[data-guide-back]').forEach(b=>b.onclick=()=>{ S.guide=false; render(); }); window.scrollTo(0,0); return; }
+  if(S.dash){ wrap.classList.add('guide'); gb.querySelector('span').textContent='Guía de uso'; gb.setAttribute('aria-pressed','false'); $('#main').innerHTML=viewDash(); bindDash(); window.scrollTo(0,0); return; }
   wrap.classList.remove('guide'); gb.querySelector('span').textContent='Guía de uso'; gb.setAttribute('aria-pressed','false');
-  renderRail(); const m=$('#main'); m.innerHTML=(S.mode&&S.step>1?S.mode.views[S.step]:[null,viewLoad,viewValidate,viewReview,viewExport][S.step])(); if(S.mode&&S.step>1) S.mode.bind(); else bindStep(); m.scrollIntoView({block:'start'}); window.scrollTo(0,0); }
+  renderRail(); const m=$('#main'); m.innerHTML=(S.mode&&S.step>1?S.mode.views[S.step]:[null,viewLoad,viewValidate,viewReview,viewExport][S.step])(); if(S.mode&&S.step>1) S.mode.bind(); else bindStep(); m.scrollIntoView({block:'start'}); window.scrollTo(0,0);  document.querySelectorAll('[data-opendash]').forEach(b=>b.onclick=openDash); }
 
 function pendingPanel(){
   const P=S.pending, main=P.find(x=>x.type!=='registro'), needReg=main&&NEEDS_REG.has(main.type)&&!P.some(x=>x.type==='registro')&&!S.registro;
@@ -768,7 +830,8 @@ function viewGuide(){
     <li><b>Exportar</b>Elige la salida que necesitas:
       <ul><li><b>Limpieza de datos:</b> Excel con el resumen y el detalle de cada incidencia (código, fila del Excel y quién lo cargó), para corregir en el IMS.</li>
       <li><b>Power BI:</b> Excel con las columnas ordenadas y las respuestas múltiples separadas en columnas 1/0. En kits incluye tablas relacionadas por «ID entrega».</li>
-      <li><b>Informe:</b> abre una pantalla con sus propios filtros, título, observaciones y logo opcional, y genera un PDF con el análisis.</li></ul></li>
+      <li><b>Informe:</b> abre una pantalla con sus propios filtros, título, observaciones y logo opcional, y genera un PDF con el análisis.</li>
+      <li><b>Tablero interactivo:</b> muestra indicadores, matrices y gráficos que se actualizan con los filtros de periodo, estado, municipio, parroquia y socio. Con «Exportar tablero en PDF» se descarga tal como se ve, con los filtros aplicados.</li></ul></li>
   </ol>
   <h2>Formularios disponibles</h2>
   <div class="scroll"><table><thead><tr><th>Formulario</th><th>Requiere Registro</th><th>Particularidad</th></tr></thead><tbody>
@@ -1410,7 +1473,7 @@ async function repPdf(ext){
   const footer=src=>{ const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); stroke(C.line); doc.setLineWidth(0.3); doc.line(M,283,W-M,283);
     T(src,M,287.5,{size:6.3,c:C.grey,maxW:CW-30}); T(`Página ${i} de ${n}`,W-M,287.5,{size:6.3,c:C.grey,align:'right'}); } };
   const bars=(items,x,y,w,o={})=>{ const rowH=o.rowH||6, lw=o.lw||w*0.44, vw=o.total?28:16, bw=w-lw-vw-2, max=Math.max(1,...items.map(i=>i[1]));
-    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; T(fit(l,lw-2,7.2),x,yy+3.4,{size:7.2}); fill(C.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||C.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
+    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; { const L=String(l); doc.setFont('helvetica','normal'); doc.setFontSize(7.2); if(doc.getTextWidth(L)<=lw-2) T(L,x,yy+3.4,{size:7.2}); else { const fs=rowH>=5.6?6.2:5.8; doc.setFontSize(fs); let ls=doc.splitTextToSize(L,lw-2); if(ls.length>2) ls=[ls[0],fit(ls.slice(1).join(' '),lw-2,fs)]; const lh=fs*0.406; T(ls.join('\n'),x,yy+(rowH-lh*ls.length)/2+fs*0.3528*0.8+0.3,{size:fs}); } } fill(C.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||C.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
       T(o.fmt?o.fmt(v):N(v),x+w-(o.total?13:0),yy+3.4,{size:7.2,bold:true,align:'right'}); if(o.total) T(pct(v,o.total),x+w,yy+3.4,{size:6.8,c:C.grey,align:'right'}); }); return y+items.length*rowH; };
 
   // Encabezado
@@ -1560,6 +1623,7 @@ function famViewExport(){
     <div class="exp"><h3>Reporte de errores</h3><p>Un Excel con el resumen y una pestaña por criterio (familias sin personas, personas sin familia, representante, fechas de nacimiento y duplicados), con código de familia y fila de origen para corregir en el IMS. No modifica el archivo original. Respeta el periodo y los criterios seleccionados.</p><button class="btn primary" type="button" id="exErr">Descargar reporte</button></div>
     <div class="exp"><h3>Tabla para Power BI</h3><p>Una sola tabla con una fila por persona y los datos de su familia, edad al momento del registro y una columna 1/0 por cada perfil o condición. ${fmt(n)} filas${F.from?` registradas entre el ${esc(F.from)} y el ${esc(F.to)}`:''}.</p><div class="row"><button class="btn primary" type="button" id="exPbi" ${n?'':'disabled'}>Descargar Excel</button><button class="btn" type="button" id="exCsv" ${n?'':'disabled'}>Descargar CSV</button></div></div>
     <div class="exp"><h3>Construir informe</h3><p>Un PDF de una página con el resumen de lo realizado por uno o varios equipos implementadores: familias, personas, perfil demográfico, ubicaciones y calidad de los datos. Tiene sus propios criterios de periodo, equipo y ubicación.</p><button class="btn primary" type="button" id="exRep">Construir informe</button></div>
+    <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
   </div>
   <div class="actions"><button class="btn" type="button" id="back">Volver a filtros</button><button class="btn" type="button" id="restart">Procesar otro archivo</button></div>`;
 }
@@ -1897,6 +1961,7 @@ function salViewExport(){
     <div class="exp"><h3>Limpieza de datos</h3><p>Un Excel con el resumen y una pestaña por tipo de incidencia: ${esc(S.sal.cfg.errDesc)}. No modifica el archivo original.</p><button class="btn primary" type="button" id="exErr">Descargar reporte</button></div>
     <div class="exp"><h3>Tabla para Power BI</h3><p>${esc(S.sal.cfg.pbiDesc)}</p><div class="row"><button class="btn primary" type="button" id="exPbi" ${n?'':'disabled'}>Descargar Excel</button><button class="btn" type="button" id="exCsv" ${n?'':'disabled'}>Descargar CSV</button></div></div>
     <div class="exp"><h3>Construir informe</h3><p>Un PDF de una página con el análisis de las atenciones: ${esc(S.sal.cfg.repDesc)}. Tiene sus propios criterios.</p><button class="btn primary" type="button" id="exRep">Construir informe</button></div>
+    <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
   </div>
   <div class="actions"><button class="btn" type="button" id="back">Volver a filtros</button><button class="btn" type="button" id="restart">Procesar otro archivo</button></div>`;
 }
@@ -1952,7 +2017,7 @@ async function salPdf(ext){
   const footer=src=>{ const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); stroke(C.line); doc.setLineWidth(0.3); doc.line(M,283,W-M,283);
     T(src,M,287.5,{size:6.3,c:C.grey,maxW:CW-30}); T(`Página ${i} de ${n}`,W-M,287.5,{size:6.3,c:C.grey,align:'right'}); } };
   const bars=(items,x,y,w,o={})=>{ const rowH=o.rowH||6, lw=o.lw||w*0.44, vw=o.total?28:16, bw=w-lw-vw-2, max=Math.max(1,...items.map(i=>i[1]));
-    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; T(fit(l,lw-2,7.2),x,yy+3.4,{size:7.2}); fill(C.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||C.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
+    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; { const L=String(l); doc.setFont('helvetica','normal'); doc.setFontSize(7.2); if(doc.getTextWidth(L)<=lw-2) T(L,x,yy+3.4,{size:7.2}); else { const fs=rowH>=5.6?6.2:5.8; doc.setFontSize(fs); let ls=doc.splitTextToSize(L,lw-2); if(ls.length>2) ls=[ls[0],fit(ls.slice(1).join(' '),lw-2,fs)]; const lh=fs*0.406; T(ls.join('\n'),x,yy+(rowH-lh*ls.length)/2+fs*0.3528*0.8+0.3,{size:fs}); } } fill(C.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||C.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
       T(N(v),x+w-(o.total?13:0),yy+3.4,{size:7.2,bold:true,align:'right'}); if(o.total) T(pct(v,o.total),x+w,yy+3.4,{size:6.8,c:C.grey,align:'right'}); }); return y+items.length*rowH; };
   // Encabezado
   fill(C.blue); doc.rect(0,0,W,30,'F'); fill(C.blue2); doc.rect(0,30,W,1.4,'F');
@@ -2307,6 +2372,7 @@ function comViewExport(){
     <div class="exp"><h3>Limpieza de datos</h3><p>Un Excel con el resumen${multiT?' por tipo de actividad y una pestaña por tipo':' y una pestaña de incidencias'}: duplicados, socios no válidos, fechas, actividades y temas faltantes, respuestas de otro tipo, desagregación por sexo y edad, material distribuido, alojamiento y coordenadas. No modifica el archivo original.</p><button class="btn primary" type="button" id="exErr">Descargar reporte</button></div>
     <div class="exp"><h3>Tabla para Power BI</h3><p>Una fila por actividad con ubicación, coordenadas válidas, socio, participantes por sexo y edad y una columna 1/0 por cada opción de actividad, tema, material y grupo poblacional.${multiT?' Incluye una hoja Consolidado con las columnas comunes y una hoja por tipo con sus columnas propias.':''}</p><div class="row"><button class="btn primary" type="button" id="exPbi" ${n?'':'disabled'}>Descargar Excel</button>${multiT?'':`<button class="btn" type="button" id="exCsv" ${n?'':'disabled'}>Descargar CSV</button>`}</div></div>
     <div class="exp"><h3>Construir informe</h3><p>Un PDF con el análisis de las actividades${multiT?', con una sección por tipo de actividad':''}: participantes, actividades realizadas, lugares, grupos poblacionales, material, socios y calidad de los datos.</p><button class="btn primary" type="button" id="exRep">Construir informe</button></div>
+    <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
   </div>
   <div class="actions"><button class="btn" type="button" id="back">Volver a filtros</button><button class="btn" type="button" id="restart">Procesar otro archivo</button></div>`;
 }
@@ -2347,7 +2413,7 @@ async function comPdf(ext){
   const N=n=>Number(n).toLocaleString('es-VE');
   const section=(t,x,y)=>{ T(t,x,y,{size:9.5,bold:true,c:Cc.blue}); stroke(Cc.blue2); doc.setLineWidth(0.5); doc.line(x,y+1.6,x+12,y+1.6); return y+6; };
   const bars=(items,x,y,w,o={})=>{ const rowH=5.3, lw=o.lw||w*0.46, vw=o.total?28:16, bw=w-lw-vw-2, max=Math.max(1,...items.map(i=>i[1]));
-    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; T(fit(l,lw-2,7.2),x,yy+3.4,{size:7.2}); fill(Cc.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||Cc.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
+    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; { const L=String(l); doc.setFont('helvetica','normal'); doc.setFontSize(7.2); if(doc.getTextWidth(L)<=lw-2) T(L,x,yy+3.4,{size:7.2}); else { const fs=rowH>=5.6?6.2:5.8; doc.setFontSize(fs); let ls=doc.splitTextToSize(L,lw-2); if(ls.length>2) ls=[ls[0],fit(ls.slice(1).join(' '),lw-2,fs)]; const lh=fs*0.406; T(ls.join('\n'),x,yy+(rowH-lh*ls.length)/2+fs*0.3528*0.8+0.3,{size:fs}); } } fill(Cc.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||Cc.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
       T(N(v),x+w-(o.total?13:0),yy+3.4,{size:7.2,bold:true,align:'right'}); if(o.total) T(pct(v,o.total),x+w,yy+3.4,{size:6.8,c:Cc.grey,align:'right'}); }); return y+items.length*rowH; };
   const PG={top:20,bottom:277};
   const newPage=()=>{ doc.addPage(); fill(Cc.blue); doc.rect(0,0,W,11,'F'); fill(Cc.blue2); doc.rect(0,11,W,0.8,'F'); T(fit(R.title||'',CW,9,true),M,7.2,{size:9,bold:true,c:Cc.white}); return PG.top; };
@@ -2708,6 +2774,7 @@ function nfiViewExport(){
     <div class="exp"><h3>Limpieza de datos</h3><p>Un Excel con el resumen y el detalle de incidencias: duplicados, socios no válidos, familias que no están en el Registro, fechas, entregas sin kits, cantidades no válidas, kits seleccionados sin cantidad, kits sin proyecto y entregas sin ubicación. No modifica el archivo original.</p><button class="btn primary" type="button" id="exErr">Descargar reporte</button></div>
     <div class="exp"><h3>Tabla para Power BI</h3><p>Un Excel con tres tablas relacionadas por el Código de la entrega: <b>Entregas</b> (una fila por entrega, con totales por categoría), <b>Kits entregados</b> (una fila por kit, con categoría NFI/WASH/Otro, proyecto y cantidad) y <b>Beneficiarios</b> (una fila por integrante de la familia, con sexo, edad, parentesco, discapacidad y embarazo o lactancia).</p><button class="btn primary" type="button" id="exPbi" ${T.rows.length?'':'disabled'}>Descargar Excel</button></div>
     <div class="exp"><h3>Construir informe</h3><p>Un PDF con el análisis de las entregas: kits NFI y WASH por separado, kits por proyecto, familias y personas beneficiarias, perfil por sexo y edad, lugares, socios y calidad de los datos.</p><button class="btn primary" type="button" id="exRep">Construir informe</button></div>
+    <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
   </div>
   <div class="actions"><button class="btn" type="button" id="back">Volver a filtros</button><button class="btn" type="button" id="restart">Procesar otro archivo</button></div>`;
 }
@@ -2757,7 +2824,7 @@ async function nfiPdf(ext){
   const NN=n=>Number(n).toLocaleString('es-VE');
   const section=(t,x,y)=>{ T(t,x,y,{size:9.5,bold:true,c:C.blue}); stroke(C.blue2); doc.setLineWidth(0.5); doc.line(x,y+1.6,x+12,y+1.6); return y+6; };
   const bars=(items,x,y,w,o={})=>{ const rowH=5.6, lw=o.lw||w*0.5, vw=28, bw=w-lw-vw-2, max=Math.max(1,...items.map(i=>i[1]));
-    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; T(fit(l,lw-2,7.2),x,yy+3.4,{size:7.2}); fill(C.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||C.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
+    items.forEach(([l,v],i)=>{ const yy=y+i*rowH; { const L=String(l); doc.setFont('helvetica','normal'); doc.setFontSize(7.2); if(doc.getTextWidth(L)<=lw-2) T(L,x,yy+3.4,{size:7.2}); else { const fs=rowH>=5.6?6.2:5.8; doc.setFontSize(fs); let ls=doc.splitTextToSize(L,lw-2); if(ls.length>2) ls=[ls[0],fit(ls.slice(1).join(' '),lw-2,fs)]; const lh=fs*0.406; T(ls.join('\n'),x,yy+(rowH-lh*ls.length)/2+fs*0.3528*0.8+0.3,{size:fs}); } } fill(C.pale); doc.rect(x+lw,yy+0.8,bw,3.6,'F'); if(v>0){ fill(o.c||C.blue); doc.rect(x+lw,yy+0.8,Math.max(0.6,bw*v/max),3.6,'F'); }
       T(NN(v),x+w-13,yy+3.4,{size:7.2,bold:true,align:'right'}); T(pct(v,o.total||1),x+w,yy+3.4,{size:6.8,c:C.grey,align:'right'}); }); return y+items.length*rowH; };
   const PG={top:20,bottom:277};
   const newPage=()=>{ doc.addPage(); fill(C.blue); doc.rect(0,0,W,11,'F'); fill(C.blue2); doc.rect(0,11,W,0.8,'F'); T(fit(R.title||'',CW,9,true),M,7.2,{size:9,bold:true,c:C.white}); return PG.top; };
@@ -3056,6 +3123,7 @@ function mmViewExport(){
       <div class="field" style="margin-bottom:8px"><label for="mmTitle">Título</label><input class="in" id="mmTitle" style="width:100%" maxlength="70" value="${esc(M.title)}"></div>
       <div class="field" style="margin-bottom:8px"><label for="mmNotes">Observaciones (opcional)</label><textarea class="in" id="mmNotes" rows="3" style="width:100%;resize:vertical" maxlength="800">${esc(M.notes)}</textarea></div>
       <button class="btn primary" type="button" id="mmPdfBtn">Descargar PDF</button></div>
+    <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
   </div>
   <div class="actions"><button class="btn" type="button" id="back">Volver</button><button class="btn" type="button" id="restart">Procesar otros archivos</button></div>`;
 }
@@ -3101,6 +3169,185 @@ function mmLoadBind(){
   const add=$('#mmAdd'); if(add) add.onclick=()=>{ L.push({type:'',f:null,wb:null,det:null}); re(); };
   const mode=$('#mmMode'); if(mode) mode.onclick=()=>{ S.loadMode=null; re(); };
   const go=$('#mmGo'); if(go) go.onclick=mmProcess;
+}
+
+/* ============ Tablero interactivo ============ */
+const DASH_COLORS={registro:'#8FA6D6',salud:'#0033A0',mental:'#418FDE',proteccion:'#6E5BC2',comunitarias:'#D99A2B',nfi:'#5C7FB8',wash:'#26A69A'};
+const DASH_AGES=[['0 - 17',[['0 - 4',0,4],['5 - 11',5,11],['12 - 17',12,17]]],['18 o más',[['18 - 59',18,59],['60 +',60,150]]]];
+const DASH_SEX=['Hombre','Mujer','Otro','Sin datos'];
+const dSex=p=>{ if(!p||typeof p!=='object') return 'Sin datos'; const f=fold(p.sexo); return f==='hombre'?'Hombre':f==='mujer'?'Mujer':p.sexo?'Otro':'Sin datos'; };
+function dashItemsFromMode(){
+  if(!S.mode) return [];
+  if(S.mode.id==='multi') return mmIncluded().map(it=>({type:it.type,label:it.label,obj:it.obj}));
+  if(S.mode.id==='familias') return [{type:'registro',label:'Registro de Familias',obj:S.fam}];
+  if(S.mode.id==='comunitarias') return [{type:'comunitarias',label:'Actividades comunitarias',obj:S.com}];
+  if(S.mode.id==='nfi') return [{type:S.nfi.cfg.id,label:mmLabel(S.nfi.cfg.id),obj:S.nfi}];
+  return [{type:S.sal.cfg.id,label:mmLabel(S.sal.cfg.id),obj:S.sal}];
+}
+function dashRecords(items){
+  const recs=[];
+  items.forEach(it=>{ const o=it.obj, base={form:it.type};
+    if(it.type==='registro'){ o.fams.forEach(f=>{ if(o.famByNum.get(f.num)!==f) return; recs.push({...base,kind:'reg',fecha:f.created,estado:f.estado,municipio:f.municipio,parroquia:f.parroquia,socio:f.org,caso:f.num!=null?'n'+f.num:null,persons:o.byFam.get(f.num)||[]}); }); return; }
+    if(it.type==='comunitarias'){ o.rows.forEach(a=>{ if(!o.sel.has(a.type)) return; recs.push({...base,kind:'act',fecha:a.fecha,estado:a.estado,municipio:a.municipio,parroquia:a.parroquia,socio:a.socio,caso:null,persons:[],act:a}); }); return; }
+    if(it.type==='nfi'||it.type==='wash'){ o.rows.forEach(a=>{ recs.push({...base,kind:'kit',fecha:a.fecha,estado:a.estado,municipio:a.municipio,parroquia:a.parroquia,socio:a.socio,caso:a.num!=null?'n'+a.num:(a.caso?'c'+fold(a.caso):null),persons:a.ps||[],kits:a.items.map(x=>({q:x.q,cat:o.cat[x.ki],proj:x.proj,name:o.kits[x.ki].name}))}); }); return; }
+    o.rows.forEach(a=>{ recs.push({...base,kind:'att',fecha:a.fecha,estado:a.estado,municipio:a.municipio,parroquia:a.parroquia,socio:a.socio,caso:a.num!=null?'n'+a.num:(a.caso?'c'+fold(a.caso):null),persons:[a.p||('u:'+a.pkey)]}); }); });
+  return recs;
+}
+function openDash(){
+  const items=dashItemsFromMode(); if(!items.length){ toast('No hay formularios para mostrar.'); return; }
+  const recs=dashRecords(items), ds=recs.map(r=>r.fecha).filter(Boolean).sort();
+  const prev=S.mode&&S.mode.id==='multi'?S.mm.filters:null;
+  S.dash={items,recs,minDate:ds[0]||'',maxDate:ds[ds.length-1]||'',F:{from:prev?prev.from:(ds[0]||''),to:prev?prev.to:(ds[ds.length-1]||''),cats:{}},title:items.length>1?'Tablero de asistencia':`Tablero · ${items[0].label}`};
+  render();
+}
+function dashPass(r,F,skip){
+  if(F.from||F.to){ if(!r.fecha) return false; if(F.from&&r.fecha<F.from) return false; if(F.to&&r.fecha>F.to) return false; }
+  for(const k in F.cats){ if(k===skip) continue; const s=F.cats[k]; if(!s||!s.size) continue; const v=k==='form'?r.form:(r[k]??'(Sin dato)'); if(!s.has(v)) return false; }
+  return true;
+}
+function dashCompute(){
+  const D=S.dash, F=D.F, recs=D.recs.filter(r=>dashPass(r,F)), forms=D.items.map(it=>it.type).filter(t=>!F.cats.form||!F.cats.form.size||F.cats.form.has(t));
+  const assist=recs.filter(r=>r.kind!=='reg'), hasAssist=D.items.some(it=>it.type!=='registro');
+  const pool=hasAssist?assist:recs;
+  // personas únicas con la fecha más temprana en el periodo
+  const P=new Map(); pool.forEach(r=>r.persons.forEach(p=>{ const cur=P.get(p); if(!cur||(r.fecha&&(!cur.d||r.fecha<cur.d))) P.set(p,{d:r.fecha}); }));
+  const ageOf=(p,d)=>typeof p==='object'&&p.birth&&d&&p.birth<=d?ageAt(p.birth,d):null;
+  const mx={}; DASH_AGES.forEach(([,subs])=>subs.forEach(([l])=>{ mx[l]={}; DASH_SEX.forEach(s=>mx[l][s]=0); })); mx['Sin datos']={}; DASH_SEX.forEach(s=>mx['Sin datos'][s]=0);
+  const nat=new Map(), key={Lactante:0,Embarazada:0,'Persona con discapacidad':0,'Persona mayor (60 +)':0,'Niña o niño no acompañado':0,'Enfermedad crónica':0};
+  for(const [p,info] of P){ const sx=dSex(p), age=ageOf(p,info.d); let row='Sin datos';
+    if(age!=null) DASH_AGES.forEach(([,subs])=>subs.forEach(([l,a,b])=>{ if(age>=a&&age<=b) row=l; }));
+    mx[row][sx]++;
+    const n=typeof p==='object'?(p.nat||'Sin datos'):'Sin datos'; nat.set(n,(nat.get(n)||0)+1);
+    if(typeof p==='object'){ const pf=p.perfil||new Set(), has=t=>[...pf].some(x=>fold(x)===fold(t));
+      if(has('Lactante')||has('Embarazada/Lactante')) key.Lactante++; if(has('Embarazada')||has('Embarazada/Lactante')) key.Embarazada++;
+      if(fold(p.disc)==='si') key['Persona con discapacidad']++; if(age!=null&&age>=60) key['Persona mayor (60 +)']++;
+      if(has('Niño/a no acompañado')) key['Niña o niño no acompañado']++; if(has('Enfermedad crónica')) key['Enfermedad crónica']++; } }
+  const fams=new Set(pool.map(r=>r.caso).filter(Boolean));
+  const byForm=forms.map(t=>{ const rs=recs.filter(r=>r.form===t), ps=new Set(rs.flatMap(r=>r.persons));
+    return {t,label:mmLabel(t),n:rs.length,unit:{registro:'familias registradas',comunitarias:'actividades',nfi:'entregas',wash:'entregas'}[t]||'atenciones',
+      fams:t==='comunitarias'?null:new Set(rs.map(r=>r.caso).filter(Boolean)).size, pers:t==='comunitarias'?null:ps.size,
+      kitsNfi:(t==='nfi'||t==='wash')?rs.reduce((s,r)=>s+r.kits.filter(k=>k.cat==='NFI').reduce((q,k)=>q+k.q,0),0):null,
+      kitsWash:(t==='nfi'||t==='wash')?rs.reduce((s,r)=>s+r.kits.filter(k=>k.cat==='WASH').reduce((q,k)=>q+k.q,0),0):null,
+      kitsOtro:(t==='nfi'||t==='wash')?rs.reduce((s,r)=>s+r.kits.filter(k=>k.cat==='Otro').reduce((q,k)=>q+k.q,0),0):null,
+      part:t==='comunitarias'?rs.reduce((s,r)=>s+r.act.total,0):null}; }).sort((a,b)=>b.n-a.n);
+  const months=[...new Set(assist.concat(hasAssist?[]:recs).map(r=>r.fecha&&r.fecha.slice(0,7)).filter(Boolean))].sort();
+  const hist=months.map(m=>({m,parts:forms.filter(t=>hasAssist?t!=='registro':true).map(t=>[t,(hasAssist?assist:recs).filter(r=>r.form===t&&r.fecha&&r.fecha.slice(0,7)===m).length])}));
+  const lvl=new Set(pool.map(r=>r.estado).filter(Boolean)).size>1?'estado':new Set(pool.map(r=>r.municipio).filter(Boolean)).size>1?'municipio':'parroquia';
+  const loc=countBy(pool,r=>r[lvl]||'Sin ubicación registrada');
+  const socios=countBy(pool,r=>r.socio||'(Sin dato)').sort((a,b)=>b[1]-a[1]).map(([s])=>[s,...forms.filter(t=>hasAssist?t!=='registro':true).map(t=>pool.filter(r=>(r.socio||'(Sin dato)')===s&&r.form===t).length)]);
+  const kitRecs=recs.filter(r=>r.kind==='kit'), kc=new Map(), kp=new Map(); kitRecs.forEach(r=>r.kits.forEach(k=>{ kc.set(k.cat,(kc.get(k.cat)||0)+k.q); kp.set(k.proj,(kp.get(k.proj)||0)+k.q); }));
+  const acts=recs.filter(r=>r.kind==='act').map(r=>r.act), cp={m:[0,0,0],h:[0,0,0],nr:0};
+  acts.forEach(a=>{ cp.m[0]+=a.ninas||0; cp.m[1]+=a.mujeres||0; cp.m[2]+=a.mujeres60||0; cp.h[0]+=a.ninos||0; cp.h[1]+=a.hombres||0; cp.h[2]+=a.hombres60||0; cp.nr+=a.nr||0; });
+  const attP=new Set(recs.filter(r=>r.kind==='att').flatMap(r=>r.persons)), kitP=new Set(recs.filter(r=>r.kind==='kit').flatMap(r=>r.persons));
+  const comp={att:attP.size,kit:kitP.size,both:[...attP].filter(p=>kitP.has(p)).length,unk:[...attP].filter(p=>typeof p!=='object').length,
+    nAtt:recs.filter(r=>r.kind==='att').length,nKit:recs.filter(r=>r.kind==='kit').length,nAct:recs.filter(r=>r.kind==='act').length};
+  return {comp,recs,forms,hasAssist,persons:P.size,fams:fams.size,assistN:assist.length,kits:[...kc.values()].reduce((a,b)=>a+b,0),part:acts.reduce((s,a)=>s+a.total,0),hasKits:kitRecs.length>0,hasAct:acts.length>0,
+    mx,nat:[...nat.entries()].sort((a,b)=>b[1]-a[1]),key:Object.entries(key).sort((a,b)=>b[1]-a[1]),byForm,hist,lvl,loc,socios,socForms:forms.filter(t=>hasAssist?t!=='registro':true),kc:[...kc.entries()].sort((a,b)=>b[1]-a[1]),kp:[...kp.entries()].sort((a,b)=>b[1]-a[1]),cp,regOnly:!hasAssist};
+}
+/* --- Componentes visuales --- */
+const dEsc=esc, dN=n=>fmt(n);
+function hbars(items,total,color){ const max=Math.max(1,...items.map(x=>x[1]));
+  return `<div class="hb">${items.map(([l,v])=>`<div class="hbrow"><span class="hbl" title="${dEsc(l)}">${dEsc(l)}</span><span class="hbt"><span style="width:${Math.max(v?1.5:0,v/max*100)}%;background:${color||'var(--dash-1)'}"></span></span><span class="hbv">${dN(v)}</span>${total?`<span class="hbp">${pct(v,total)}</span>`:''}</div>`).join('')||'<p class="muted">Sin datos con los filtros aplicados.</p>'}</div>`; }
+function dcard(title,body,note,cls=''){ return `<section class="dcard ${cls}"><h3>${dEsc(title)}</h3>${body}${note?`<p class="dnote">${note}</p>`:''}</section>`; }
+function dFiltersText(){ const D=S.dash, F=D.F, parts=[F.from&&F.to?`Periodo: ${dmy(F.from)} – ${dmy(F.to)}`:'Todo el periodo'];
+  [['form','Formularios'],['estado','Estado'],['municipio','Municipio'],['parroquia','Parroquia'],['socio','Socio']].forEach(([k,l])=>{ const s=F.cats[k]; if(s&&s.size) parts.push(`${l}: ${s.has('__none__')?'ninguno':[...s].map(v=>k==='form'?mmLabel(v):v).join(', ')}`); });
+  if(parts.length===1) parts.push('sin otros filtros'); return parts.join(' · '); }
+function kpiNote(X){
+  const C=X.comp, parts=[];
+  if(X.regOnly) return `<div class="dexpl"><b>Cómo se calculan.</b> Personas registradas: integrantes de las familias del Registro de Familias registradas en el periodo y con los filtros aplicados. Familias registradas: familias de vzl_cases en esas mismas condiciones.</div>`;
+  let ppl=`<b>Personas asistidas (${dN(X.persons)})</b> = `;
+  const terms=[]; if(C.att) terms.push(`${dN(C.att)} personas distintas con atenciones de salud, salud mental o protección`); if(C.kit) terms.push(`${dN(C.kit)} integrantes de familias que recibieron kits`);
+  ppl+=terms.join(' + ')+(C.both?` − ${dN(C.both)} personas que aparecen en ambos grupos`:'')+'.';
+  if(C.unk) ppl+=` Incluye ${dN(C.unk)} personas atendidas que no se encontraron en el Registro (se identifican por su nombre y código de caso; su sexo y edad figuran como «Sin datos»).`;
+  parts.push(ppl);
+  parts.push(`<b>Familias alcanzadas (${dN(X.fams)})</b>: códigos de caso distintos con al menos una atención o entrega de kits.`);
+  const as=[]; if(C.nAtt) as.push(`${dN(C.nAtt)} atenciones`); if(C.nKit) as.push(`${dN(C.nKit)} entregas de kits`); if(C.nAct) as.push(`${dN(C.nAct)} actividades comunitarias`);
+  parts.push(`<b>Asistencias brindadas (${dN(X.assistN)})</b> = ${as.join(' + ')}.`);
+  if(X.hasKits) parts.push(`<b>Kits</b>: unidades entregadas en los formularios de NFI y WASH, separadas según la categoría confirmada de cada kit (un kit WASH entregado en el formulario NFI suma como WASH).`);
+  parts.push('No se incluyen las personas que solo están registradas ni los participantes de actividades comunitarias, que se presentan aparte.');
+  return `<div class="dexpl"><b>Cómo se calculan los indicadores.</b> ${parts.join(' ')}</div>`;
+}
+function dashBody(){
+  const D=S.dash, X=dashCompute(), tot=X.persons;
+  const kpis=[[X.regOnly?'Personas registradas':'Personas asistidas',X.persons,'dk1'],[X.regOnly?'Familias registradas':'Familias alcanzadas',X.fams,'dk2']];
+  if(!X.regOnly) kpis.push(['Asistencias brindadas',X.assistN,'dk3']); if(X.hasKits){ X.kc.forEach(([c,v])=>{ if(v) kpis.push([`Kits ${c} entregados`,v,'dk3']); }); } if(X.hasAct) kpis.push(['Participantes en actividades comunitarias',X.part,'dk3']);
+  const mxRows=DASH_AGES.map(([g,subs])=>{ const sum=s=>subs.reduce((t,[l])=>t+X.mx[l][s],0), gt=DASH_SEX.reduce((t,s)=>t+sum(s),0);
+    return `<tr class="grp"><td>${g}</td>${DASH_SEX.map(s=>`<td class="num">${dN(sum(s))}</td>`).join('')}<td class="num">${dN(gt)}</td></tr>`+subs.map(([l])=>`<tr><td class="sub">${l}</td>${DASH_SEX.map(s=>`<td class="num">${dN(X.mx[l][s])}</td>`).join('')}<td class="num">${dN(DASH_SEX.reduce((t,s)=>t+X.mx[l][s],0))}</td></tr>`).join(''); }).join('')
+    +`<tr class="grp"><td>Sin datos de edad</td>${DASH_SEX.map(s=>`<td class="num">${dN(X.mx['Sin datos'][s])}</td>`).join('')}<td class="num">${dN(DASH_SEX.reduce((t,s)=>t+X.mx['Sin datos'][s],0))}</td></tr>`
+    +`<tr class="tot"><td>Total</td>${DASH_SEX.map(s=>`<td class="num">${dN(Object.values(X.mx).reduce((t,r)=>t+r[s],0))}</td>`).join('')}<td class="num">${dN(tot)}</td></tr>`;
+  const formRows=X.byForm.map(f=>`<tr><td><span class="dot" style="background:${DASH_COLORS[f.t]}"></span>${dEsc(f.label)}</td><td class="num">${dN(f.n)}<div class="muted dunit">${f.unit}</div></td><td class="num">${f.fams==null?'—':dN(f.fams)}</td><td class="num">${f.pers==null?'—':dN(f.pers)}</td>${X.hasKits?`<td class="num">${f.kitsNfi==null?'—':dN(f.kitsNfi)}</td><td class="num">${f.kitsWash==null?'—':dN(f.kitsWash)}</td>`+(X.kc.some(k=>k[0]==='Otro'&&k[1])?`<td class="num">${f.kitsOtro==null?'—':dN(f.kitsOtro)}</td>`:''):''}${X.hasAct?`<td class="num">${f.part==null?'—':dN(f.part)}</td>`:''}</tr>`).join('');
+  const hmax=Math.max(1,...X.hist.map(h=>h.parts.reduce((s,p)=>s+p[1],0)));
+  const hist=X.hist.length?`<div class="hist">${X.hist.map(h=>{ const t=h.parts.reduce((s,p)=>s+p[1],0); const [y,m]=h.m.split('-');
+    return `<div class="hcol"><span class="hval">${dN(t)}</span><div class="hbar" style="height:${t/hmax*100}%">${h.parts.filter(p=>p[1]).map(([f,v])=>`<span style="flex:${v};background:${DASH_COLORS[f]}" title="${dEsc(mmLabel(f))}: ${dN(v)}"></span>`).join('')}</div><span class="hlab">${MONTHS[+m-1].slice(0,3)}<br>${y}</span></div>`; }).join('')}</div>
+    <div class="legend">${X.socForms.map(f=>`<span><span class="dot" style="background:${DASH_COLORS[f]}"></span>${dEsc(mmLabel(f))}</span>`).join('')}</div>`:'<p class="muted">Sin datos con los filtros aplicados.</p>';
+  const lvlName={estado:'estado',municipio:'municipio',parroquia:'parroquia'}[X.lvl];
+  const socT=`<div class="scroll"><table class="dt"><thead><tr><th>Socio</th>${X.socForms.map(f=>`<th class="num">${dEsc(mmShort[f]||'Registro')}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>${X.socios.slice(0,12).map(r=>`<tr><td>${dEsc(r[0])}</td>${r.slice(1).map(v=>`<td class="num">${v?dN(v):'·'}</td>`).join('')}<td class="num"><b>${dN(r.slice(1).reduce((a,b)=>a+b,0))}</b></td></tr>`).join('')}</tbody></table></div>`;
+  const natT=`<div class="scroll"><table class="dt"><thead><tr><th>Nacionalidad</th><th class="num">Personas</th><th class="num">%</th></tr></thead><tbody>${X.nat.slice(0,8).map(([n,v])=>`<tr><td>${dEsc(n)}</td><td class="num">${dN(v)}</td><td class="num">${pct(v,tot)}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="num">${dN(tot)}</td><td class="num">100 %</td></tr></tbody></table></div>`;
+  const cpT=X.hasAct?dcard('Participantes en actividades comunitarias',`<div class="scroll"><table class="dt"><thead><tr><th>Edad</th><th class="num">Mujeres y niñas</th><th class="num">Hombres y niños</th><th class="num">Total</th></tr></thead><tbody>${['0 - 17','18 - 59','60 +'].map((l,i)=>`<tr><td>${l}</td><td class="num">${dN(X.cp.m[i])}</td><td class="num">${dN(X.cp.h[i])}</td><td class="num">${dN(X.cp.m[i]+X.cp.h[i])}</td></tr>`).join('')}${X.cp.nr?`<tr><td>Prefiere no responder</td><td class="num" colspan="2"></td><td class="num">${dN(X.cp.nr)}</td></tr>`:''}<tr class="tot"><td>Total</td><td class="num">${dN(X.cp.m.reduce((a,b)=>a+b,0))}</td><td class="num">${dN(X.cp.h.reduce((a,b)=>a+b,0))}</td><td class="num">${dN(X.part)}</td></tr></tbody></table></div>`,
+    'Las actividades comunitarias registran participantes agregados, sin identificar a cada persona; por eso se presentan aparte y no se suman a las personas asistidas.'):'';
+  return `
+  <div class="dblock dhead"><div><h1>${dEsc(D.title)}</h1><p class="dsub">OIM Venezuela · ${dEsc(D.items.map(it=>it.label).join(', '))}</p></div><div class="dmeta"><b>Filtros aplicados</b><span>${dEsc(dFiltersText())}</span><span class="muted">Generado el ${dmy(TODAY_YMD)}</span></div></div>
+  <div class="dblock"><div class="dkpis">${kpis.map(([l,v,c])=>`<div class="dkpi ${c}"><span>${dEsc(l)}</span><b>${dN(v)}</b></div>`).join('')}</div>${kpiNote(X)}</div>
+  <div class="dblock drow">${dcard('Resultados por formulario',`<div class="scroll"><table class="dt"><thead><tr><th>Formulario</th><th class="num">Registros</th><th class="num">Familias</th><th class="num">Personas</th>${X.hasKits?'<th class="num">Kits NFI</th><th class="num">Kits WASH</th>'+(X.kc.some(k=>k[0]==='Otro'&&k[1])?'<th class="num">Kits Otro</th>':''):''}${X.hasAct?'<th class="num">Participantes</th>':''}</tr></thead><tbody>${formRows}</tbody></table></div>`,
+      `Familias y personas se cuentan sin duplicados dentro de cada formulario; en kits, las personas son todos los integrantes de la familia según el Registro. Las filas no se suman para obtener los indicadores superiores porque una misma familia o persona puede aparecer en varios formularios: los indicadores la cuentan una sola vez.${X.hasKits?' Los kits se separan por su categoría; por eso el formulario NFI puede tener kits WASH.':''}`,'span2')}
+    ${dcard('Población clave',hbars(X.key.filter(x=>x[1]),tot,'var(--dash-1)'),`Personas ${X.regOnly?'registradas':'asistidas'} con cada condición, según el Registro de Familias; los porcentajes son sobre ${dN(tot)} personas. Una persona puede tener varias condiciones, así que no se suman.`)}</div>
+  <div class="dblock drow">${dcard('Desagregación por edad y sexo',`<div class="scroll"><table class="dt mx"><thead><tr><th>Rango de edad</th>${DASH_SEX.map(s=>`<th class="num">${s}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>${mxRows}</tbody></table></div>`,
+      `Personas ${X.regOnly?'registradas':'asistidas'} únicas: cada persona se cuenta una vez aunque haya recibido varias asistencias. La edad se calcula a la fecha de su primera asistencia en el periodo; «Sin datos» agrupa a quienes no se encontraron en el Registro. El total (${dN(tot)}) es el mismo de ${X.regOnly?'«Personas registradas»':'«Personas asistidas»'}.`,'span2')}
+    ${dcard('Nacionalidad',natT,`Según el Registro de Familias. El total (${dN(tot)}) es el mismo de ${X.regOnly?'«Personas registradas»':'«Personas asistidas»'}; «Sin datos» corresponde a personas que no están en el Registro.`)}</div>
+  <div class="dblock drow">${dcard(X.regOnly?'Familias registradas por mes':'Histórico de asistencias',hist,X.regOnly?'Familias registradas cada mes.':'Registros de asistencia por mes y formulario: atenciones, entregas de kits y actividades comunitarias. Pasa el cursor sobre cada tramo para ver su valor.','span3')}</div>
+  <div class="dblock drow">${dcard(`Asistencias por ${lvlName}`,hbars(X.loc.slice(0,10),X.recs.filter(r=>X.regOnly||r.kind!=='reg').length,'var(--dash-2)'),X.regOnly?'Familias registradas según su lugar de procedencia.':`Registros de asistencia (${dN(X.assistN)}: atenciones, entregas y actividades) según el lugar donde se brindaron; los porcentajes son sobre ese total. Al filtrar un estado, el gráfico pasa a municipios y luego a parroquias.`)}
+    ${dcard('Socios implementadores',socT,`Registros de asistencia por socio y formulario, ordenados de mayor a menor; la columna Total suma ${dN(X.regOnly?X.recs.length:X.assistN)} registros.`,'span2')}</div>
+  ${X.hasKits?`<div class="dblock drow">${dcard('Kits por categoría',hbars(X.kc,X.kits,'var(--dash-3)'),`Unidades entregadas (${dN(X.kits)} en total, sumando los formularios NFI y WASH) según la categoría confirmada al procesar.`)}${dcard('Kits por proyecto',hbars(X.kp,X.kits,'var(--dash-1)'),`Las mismas ${dN(X.kits)} unidades según el proyecto indicado en las columnas de selección o en el nombre del kit. «Sin datos» señala kits pendientes de asignar.`)}${cpT||'<span></span>'}</div>`:(cpT?`<div class="dblock drow">${cpT}</div>`:'')}
+`;
+}
+function dashFilterDD(k,label,opts){ const s=S.dash.F.cats[k];
+  return `<details class="dd"><summary>${label}: <b>${!s||!s.size?'Todos':s.has('__none__')?'Ninguno':`${s.size} seleccionado${s.size>1?'s':''}`}</b></summary><div class="ddpop">
+    <div class="row" style="margin-bottom:6px"><button class="btn sm" type="button" data-dall="${k}">Todos</button><button class="btn sm" type="button" data-dnone="${k}">Ninguno</button></div>
+    <div class="ddlist">${opts.map(([v,n,l])=>`<label class="check"><input type="checkbox" data-dcat="${k}" value="${dEsc(v)}" ${!s||!s.size||s.has(v)?'checked':''}> ${dEsc(l||v)} <span class="muted">${dN(n)}</span></label>`).join('')}</div></div></details>`; }
+function dashFilters(){
+  const D=S.dash, F=D.F, ok=k=>D.recs.filter(r=>dashPass(r,{...F,from:'',to:''},k));
+  const o=(k,lab)=>countBy(ok(k),r=>k==='form'?r.form:(r[k]||'(Sin dato)')).sort((a,b)=>String(a[0]).localeCompare(String(b[0]),'es')).map(([v,n])=>[v,n,lab?lab(v):v]);
+  return `<div class="dfilters noprint">
+    <div class="dper">${periodPanel('dsh',D.minDate,D.maxDate,F,D.recs.map(r=>r.fecha),'dshrange','')}</div>
+    <div class="ddrow">${D.items.length>1?dashFilterDD('form','Formulario',o('form',mmLabel)):''}${dashFilterDD('estado','Estado',o('estado'))}${dashFilterDD('municipio','Municipio',o('municipio'))}${dashFilterDD('parroquia','Parroquia',o('parroquia'))}${dashFilterDD('socio','Socio',o('socio'))}
+      <button class="btn sm" type="button" id="dReset">Quitar filtros</button></div></div>`;
+}
+function viewDash(){
+  return `<div class="dash" id="dash">
+    <div class="dtop noprint"><button class="btn" type="button" id="dBack">← Volver</button><div class="row"><button class="btn primary" type="button" id="dPdf">Exportar tablero en PDF</button></div></div>
+    <div id="dFilt">${dashFilters()}</div>
+    <div id="dashBody">${dashBody()}</div></div>`;
+}
+function bindDash(){
+  const D=S.dash, F=D.F;
+  const refresh=(keepOpen)=>{ $('#dashBody').innerHTML=dashBody(); const open=[...document.querySelectorAll('details.dd')].map(d=>d.open); $('#dFilt').innerHTML=dashFilters(); document.querySelectorAll('details.dd').forEach((d,i)=>{ if(keepOpen&&open[i]) d.open=true; }); bindF(); };
+  const bindF=()=>{
+    bindPeriod('dsh',F,D.recs.map(r=>r.fecha),'dshrange',()=>refresh(false));
+    const sync=k=>{ const bx=[...document.querySelectorAll(`[data-dcat="${k}"]`)], sel=new Set(bx.filter(b=>b.checked).map(b=>b.value)); F.cats[k]=sel.size===bx.length?null:(sel.size?sel:new Set(['__none__'])); refresh(true); };
+    document.querySelectorAll('[data-dcat]').forEach(b=>b.onchange=()=>sync(b.dataset.dcat));
+    document.querySelectorAll('[data-dall]').forEach(b=>b.onclick=()=>{ document.querySelectorAll(`[data-dcat="${b.dataset.dall}"]`).forEach(x=>x.checked=true); sync(b.dataset.dall); });
+    document.querySelectorAll('[data-dnone]').forEach(b=>b.onclick=()=>{ document.querySelectorAll(`[data-dcat="${b.dataset.dnone}"]`).forEach(x=>x.checked=false); sync(b.dataset.dnone); });
+    const rs=$('#dReset'); if(rs) rs.onclick=()=>{ F.cats={}; F.from=D.minDate; F.to=D.maxDate; refresh(false); };
+    document.querySelectorAll('details.dd').forEach(d=>d.addEventListener('toggle',()=>{ if(d.open) document.querySelectorAll('details.dd').forEach(o=>{ if(o!==d) o.open=false; }); }));
+  };
+  bindF();
+  $('#dBack').onclick=()=>{ S.dash=null; render(); };
+  $('#dPdf').onclick=async()=>{ busy(true); await nextFrame(); try{ await dashPdf(); }catch(e){ console.error(e); toast('No se pudo exportar el tablero: '+(e.message||e)); } busy(false); };
+}
+async function dashPdf(){
+  if(!window.html2canvas||!window.jspdf){ toast('No se pudo cargar el generador de PDF. Revisa la conexión y recarga la página.'); return; }
+  const root=document.documentElement, prevTheme=root.dataset.theme; root.dataset.theme='light'; document.body.classList.add('capturing'); await nextFrame();
+  try{
+    const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',orientation:'landscape'}), W=297, H=210, M=10, CW=W-2*M; let y=M;
+    for(const el of document.querySelectorAll('#dashBody .dblock')){
+      const cv=await window.html2canvas(el,{scale:2,backgroundColor:'#FFFFFF',logging:false,useCORS:true});
+      let w=CW, h=cv.height*w/cv.width; if(h>H-2*M-8){ h=H-2*M-8; w=cv.width*h/cv.height; }
+      if(y+h>H-M-6){ doc.addPage(); y=M; }
+      doc.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',M+(CW-w)/2,y,w,h); y+=h+3;
+    }
+    const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,128,140); doc.text(`Generado con el Depurador IMS el ${dmy(TODAY_YMD)} · Herramienta elaborada por Yohan Mayorga, Monitoreo y Evaluación, OIM Venezuela`,M,H-4); doc.text(`Página ${i} de ${n}`,W-M,H-4,{align:'right'}); }
+    const F=S.dash.F; await saveFile(`Tablero_IMS${F.from&&F.to?`_${F.from}_a_${F.to}`:''}.pdf`,doc.output('blob'));
+  } finally { if(prevTheme) root.dataset.theme=prevTheme; else delete root.dataset.theme; document.body.classList.remove('capturing'); }
 }
 
 /* ============ Tema claro / oscuro ============ */
