@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{
   --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F4F6FA; --ink:#14223D; --ink-2:#4F5D78; --line:#D3DBE7;
@@ -531,8 +532,8 @@ async function readFile(file){
   const emptyCols=headers.filter(hd=>rows.every(r=>r[hd]==null||String(r[hd]).trim()===''));
   return {name:file.name,sheet:sheetName,sheets:wb.SheetNames.length,headerRow:h+1,headers,rows,emptyCols};
 }
-const FORM_TYPES=[['registro','Registro de Familias'],['salud','Atenciones en salud'],['mental','Atenciones en salud mental'],['proteccion','Atenciones en protección'],['comunitarias','Actividades comunitarias'],['nfi','Entrega de kits NFI'],['wash','Entrega de kits y servicios WASH'],['generic','Otro formulario (modo genérico)']];
-const NEEDS_REG=new Set(['salud','mental','proteccion','nfi','wash']);
+const FORM_TYPES=[['registro','Registro de Familias'],['salud','Atenciones en salud'],['mental','Atenciones en salud mental'],['proteccion','Atenciones en protección'],['psicosocial','Atenciones psicosociales (Protección)'],['comunitarias','Actividades comunitarias'],['nfi','Entrega de kits NFI'],['wash','Entrega de kits y servicios WASH'],['generic','Otro formulario (modo genérico)']];
+const NEEDS_REG=new Set(['salud','mental','proteccion','psicosocial','nfi','wash']);
 function detectForm(wb){
   try{ if(comDetect(wb)) return 'comunitarias'; const k=kitsSheet(wb); if(k) return k.cfg.id; if(famDetect(wb)) return 'registro'; const a=attSheet(wb); if(a) return a.cfg.id; }catch(e){ console.error(e); }
   return 'generic';
@@ -555,12 +556,13 @@ async function processPending(){
     for(const r of regs){ if(!famDetect(r.wb)){ toast(`${r.f.name} no tiene las pestañas vzl_cases y beneficiaries_vzl de un Registro de Familias.`); return; } }
     if(regs.length){ const D=famLoad(regs[0].wb,regs[0].f.name); if(D.fatal.length&&!others.length){ S.fam=D; S.mode=MODULES[0]; S.pending=null; S.step=2; return; } if(!D.fatal.length) S.registro=D; else toast('El Registro de Familias no tiene todas las columnas necesarias.');
       if(!others.length){ S.fam=D; S.mode=MODULES[0]; S.pending=null; S.step=2; return; } }
-    const main=others[0]; if(others.length>1) toast(`Se procesa ${main.f.name}; los formularios se procesan de uno en uno.`);
+    const main=others[0], compType=ATT_CFG[main.type]&&ATT_CFG[main.type].companion, comp=compType?others.find(x=>x!==main&&x.type===compType):null; S.salComp=null;
+    if(others.length>(comp?2:1)) toast(`Se procesa ${main.f.name}; los formularios se procesan de uno en uno.`);
     S.pending=null;
     if(main.type==='generic'){ await genericLoad(others.filter(x=>x.type==='generic').map(x=>x.f)); return; }
     if(main.type==='comunitarias'){ S.com=comLoad(main.wb,main.f.name); S.mode=COM_MODULE; S.step=2; return; }
     if(main.type==='nfi'||main.type==='wash'){ S.nfiWb={wb:main.wb,name:main.f.name,type:main.type}; S.nfi=nfiLoad(main.wb,main.f.name,S.registro||null,main.type); S.mode=NFI_MODULE; S.step=2; return; }
-    S.salWb={wb:main.wb,name:main.f.name,type:main.type}; S.sal=salLoad(main.wb,main.f.name,S.registro||null,main.type); S.mode=SAL_MODULE; S.step=2;
+    S.salWb={wb:main.wb,name:main.f.name,type:main.type}; S.sal=salLoad(main.wb,main.f.name,S.registro||null,main.type); if(comp){ S.salComp={wb:comp.wb,name:comp.f.name,type:comp.type}; salReattachComp(); } S.mode=SAL_MODULE; S.step=2;
   }catch(e){ console.error(e); toast('No se pudo procesar el archivo con el tipo elegido. Verifica que sea el formulario correcto.'); S.step=1; }
   finally{ busy(false); render(); }
 }
@@ -850,7 +852,7 @@ function confirmBox(title,msg,okLabel){
 async function askRestart(){
   const ok=await confirmBox('¿Empezar de nuevo?','Se descartarán los archivos cargados, las selecciones y los filtros de este proceso, y volverás a la pantalla inicial. Los archivos que ya descargaste no se ven afectados.','Sí, empezar de nuevo');
   if(!ok) return;
-  Object.assign(S,{mode:null,step:1,pending:null,loadMode:null,fam:null,sal:null,nfi:null,com:null,mm:null,mmLoad:null,registro:null,salWb:null,nfiWb:null,result:null,dash:null,guide:false});
+  Object.assign(S,{salComp:null,mode:null,step:1,pending:null,loadMode:null,fam:null,sal:null,nfi:null,com:null,mm:null,mmLoad:null,registro:null,salWb:null,nfiWb:null,result:null,dash:null,guide:false});
   render(); toast('Listo: puedes cargar nuevos archivos.');
 }
 function render(){
@@ -873,7 +875,8 @@ function viewGuide(){
   const forms=[['Registro de Familias','No','Familias e integrantes; base para vincular las atenciones y las entregas.'],
     ['Atenciones en salud','Sí','Diagnóstico unificado; sexo y edad desde el Registro.'],
     ['Atenciones en salud mental','Sí','Tipo de atención psicosocial, motivo y número de sesión.'],
-    ['Atenciones en protección','Sí','Tipos de asistencia, orientaciones, acciones, kits de dignidad y bloque psicosocial.'],
+    ['Atenciones en protección','Sí','Tipos de asistencia, orientaciones, acciones, kits de dignidad y bloque psicosocial. Se recomienda cargar también Atención psicosocial.'],
+    ['Atenciones psicosociales (Protección)','Sí','Tipo de atención, sesiones, motivo de ingreso y acompañamiento. Se recomienda cargar también Protección para detectar atenciones registradas en ambos.'],
     ['Actividades comunitarias','No','Actividades grupales; se elige qué tipos revisar (protección, salud y SMAPS, WASH).'],
     ['Entrega de kits NFI','Sí','Se confirma la categoría de cada kit (NFI, WASH u Otro).'],
     ['Entrega de kits y servicios WASH','Sí','Kits y servicios (baños, duchas, lavandería, agua) por separado.']];
@@ -884,7 +887,7 @@ function viewGuide(){
   <div class="note">Descarga los Excel completos desde el IMS, sin modificarlos. Para las atenciones (salud, salud mental, protección) y las entregas de kits necesitas también el <b>Registro de Familias completo</b>, sin filtro de fechas: de ahí salen el sexo, la edad y los integrantes de cada familia.</div>
   <h2>Pasos</h2>
   <ol class="gsteps">
-    <li><b>Elegir el modo</b>En la pantalla inicial elige <b>Depurador de archivo único</b> para trabajar un formulario a la vez, o <b>Depurador múltiple</b> para cargar el Registro de Familias y varios formularios juntos y obtener una tabla para Power BI y un informe PDF globales. En el modo múltiple, cada formulario se verifica en orden en un acordeón (botón «Siguiente») y la limpieza de datos se descarga por archivo.</li>
+    <li><b>Elegir el modo</b>En la pantalla inicial elige <b>Depurador de archivo único</b> para trabajar un formulario a la vez, o <b>Depurador múltiple</b> para cargar el Registro de Familias y varios formularios juntos y obtener una tabla para Power BI y un informe PDF globales. En el modo múltiple, cada formulario se verifica en orden en un acordeón (botón «Siguiente»), la limpieza de datos se descarga por archivo y, además, puedes descargar el <b>SITREP</b> en Excel con personas por sector y estado.</li>
     <li><b>Cargar y confirmar el archivo</b>En el modo de archivo único, arrastra el Excel a la zona de carga o haz clic para buscarlo. La herramienta detecta de qué formulario se trata; confirma el tipo en la lista (o corrígelo) y pulsa «Confirmar y continuar». Puedes cargar el Registro de Familias junto con el archivo de atenciones o de kits.</li>
     <li><b>Verificar</b>Revisa lo que la herramienta preparó antes de procesar:
       <ul><li>Las columnas encontradas: si falta alguna obligatoria, el archivo no es el correcto o está incompleto.</li>
@@ -1780,7 +1783,7 @@ const ATT_CFG={
     pbiDesc:'Una fila por atención con los campos de ubicación, socio, código de caso, tipo de atención, proyecto, diagnóstico unificado, confirmación y conducta, más el sexo y la edad de la persona tomados del Registro de Familias.',
     errDesc:'duplicados y posibles duplicados (con los minutos entre cargas y quién cargó), socios no válidos, atenciones sin vínculo con el Registro y atenciones sin diagnóstico',
     repDesc:'volumen, personas atendidas, diagnósticos, perfil por sexo y edad, lugares de atención, socios y calidad de los datos'},
-  proteccion:{id:'proteccion',defaultValid:['hias','equipo proteccion oim'],name:'Atenciones en protección',srcName:'atenciones en protección',file:'Atenciones_Proteccion',title:'Informe de atenciones en protección',sub:'Protección · IMS',
+  proteccion:{id:'proteccion',companion:'psicosocial',defaultValid:['hias','equipo proteccion oim'],name:'Atenciones en protección',srcName:'atenciones en protección',file:'Atenciones_Proteccion',title:'Informe de atenciones en protección',sub:'Protección · IMS',
     lead:'Archivo reconocido por sus columnas de atención (Código de caso, Fecha de asistencia, Tipo de asistencia).',
     cols:{tipo:{m:'tipo_asistencia',l:'Tipo de asistencia',req:1},proyecto:{m:'proyecto',l:'Proyecto',req:1},project:{m:'project',l:'Proyecto (columna 2)'},
       orient:{m:'orientacion',l:'¿Qué tipo de orientación recibió la persona?',req:1},material:{m:'informativos',l:'Entrega de material informativo / directorio de servicios',req:1},
@@ -1810,6 +1813,28 @@ const ATT_CFG={
     pbiDesc:'Una fila por atención con ubicación, socio, código de caso y proyecto; una columna 1/0 por cada tipo de asistencia; orientaciones, material informativo, acciones realizadas, kits de dignidad, tema abordado y el bloque psicosocial (tipo de atención, modalidad, sesiones, cierre, motivo de ingreso y estado del acompañamiento), más el sexo y la edad tomados del Registro de Familias.',
     errDesc:'duplicados y posibles duplicados (con los minutos entre cargas y quién cargó), socios no válidos, atenciones sin vínculo con el Registro y datos incompletos o inconsistentes (orientaciones y kits)',
     repDesc:'volumen, personas atendidas, tipos de asistencia, orientaciones, acciones, kits de dignidad, atención psicosocial, perfil por sexo y edad, lugares de atención, socios y calidad de los datos'},
+  psicosocial:{id:'psicosocial',companion:'proteccion',defaultValid:['hias','equipo proteccion oim'],name:'Atenciones psicosociales (Protección)',srcName:'atenciones psicosociales',file:'Atenciones_Psicosociales',title:'Informe de atenciones psicosociales',sub:'Atención psicosocial · Protección · IMS',
+    lead:'Archivo reconocido por sus columnas de atención psicosocial (Código de caso, Fecha de asistencia, Tipo de atención, Número de sesiones).',
+    cols:{tipo:{m:'atention_type',l:'Tipo de atención',req:1},modal:{m:'modality',l:'Modalidad',req:1},sesN:{m:'session_number',l:'Numero de sesiones',req:1},cierre:{m:'end_session',l:'¿Es sesión de cierre?',req:1},
+      motIng:{m:'reason_admission',l:'Motivo de ingreso (categorias no clinicas)',req:1},estAcomp:{m:'accompaniment_status',l:'Estado del acompañamiento',req:1}},
+    derive:g=>{ const sv=toNum(g('sesN')); const ok=sv!==undefined&&sesionOk(sv); return {modal:toText(g('modal')),sesRaw:toText(g('sesN')),sesN:ok?sv:null,sesion:ok?sv:null,sesBad:sv===undefined||(sv!=null&&!sesionOk(sv)),
+      cierre:toText(g('cierre')),motIng:multi(g('motIng')),estAcomp:toText(g('estAcomp'))}; },
+    exactKey:a=>[fold(a.tipo),String(a.sesN??a.sesRaw??''),fold(a.modal),fold(a.estAcomp)],
+    nearKey:a=>a.tipo&&a.sesN!=null?`${fold(a.tipo)}|s${a.sesN}`:null,
+    nearLabel:'mismo tipo de atención y misma sesión con 1 o 2 días de diferencia',
+    issues:[{sum:'Atenciones sin tipo de atención',prob:a=>'Sin tipo de atención',test:a=>!a.tipo},
+      {sum:'Atenciones con número de sesiones no válido',prob:a=>`Número de sesiones no válido (${a.sesRaw})`,test:a=>a.sesBad},
+      {sum:'Atenciones sin estado del acompañamiento',prob:a=>'Sin estado del acompañamiento',test:a=>!a.estAcomp},
+      {sum:'Sesión de cierre inconsistente con el estado del acompañamiento',prob:a=>fold(a.cierre)==='si'?`Sesión de cierre con acompañamiento «${a.estAcomp}»`:`Acompañamiento «${a.estAcomp}» sin sesión de cierre`,
+        test:a=>(fold(a.cierre)==='si'&&fold(a.estAcomp)==='activo')||(fold(a.cierre)==='no'&&/^cerrado/.test(fold(a.estAcomp)))}],
+    qualityLabel:'Atenciones con datos incompletos o inconsistentes',
+    cats:[['socio','Socio implementador'],['estado','Estado de atención'],['municipio','Municipio de atención'],['parroquia','Parroquia de atención'],['alojamiento','Alojamiento'],['tipo','Tipo de atención']],
+    pbi:[['estado','Estado donde se brindó la asistencia'],['municipio','Municipio donde se brindó la asistencia'],['parroquia','Parroquia donde se brindó la asistencia'],['isAloj','¿Está en un alojamiento?'],['alojamiento','Alojamiento'],['comunidad','Comunidad'],['fecha','Fecha de asistencia','date'],['socio','Socio Implementador'],['caso','Código de caso'],
+      ['tipo','Tipo de atención'],['modal','Modalidad'],['sesN','Número de sesiones'],['cierre','¿Es sesión de cierre?'],['#split','motIng','Motivo de ingreso'],['estAcomp','Estado del acompañamiento']],
+    dupCol:['tipo','Tipo de atención'],
+    pbiDesc:'Una fila por atención con ubicación, socio, código de caso, tipo de atención, modalidad, número de sesiones, sesión de cierre, motivo de ingreso (1/0 por opción) y estado del acompañamiento, más el sexo y la edad tomados del Registro de Familias.',
+    errDesc:'duplicados y posibles duplicados, atenciones registradas también en el formulario de Protección, socios no válidos, atenciones sin vínculo con el Registro y datos incompletos o inconsistentes',
+    repDesc:'volumen, personas atendidas, tipos de atención, motivos de ingreso, sesiones, perfil por sexo y edad, lugares de atención, socios y calidad de los datos'},
   mental:{id:'mental',extraValid:/ucab/,name:'Atenciones en salud mental',srcName:'atenciones en salud mental',file:'Atenciones_Salud_Mental',title:'Informe de atenciones en salud mental',sub:'Salud mental y apoyo psicosocial · IMS',
     lead:'Archivo reconocido por sus columnas de atención (Código de caso, Fecha de asistencia, Tipo de atención psicosocial).',
     cols:{motivo:{m:'motive_ps',l:'Motivo / problemática presentada',req:1},psico:{m:'psicosocial',l:'Tipo de atención psicosocial',req:1},
@@ -1832,11 +1857,13 @@ function peekRows(ws,n){ if(!ws||!ws['!ref']) return []; const r=XLSX.utils.deco
 function attSheet(wb){
   for(const n of wb.SheetNames){ const h=peekRows(wb.Sheets[n],2).flat().map(x=>String(x??''));
     if(!(h.includes('case_code')&&h.includes('assistance_date'))) continue;
+    if(h.includes('tipo_asistencia')&&!h.includes('acciones_realizadas')&&h.includes('atention_type')) return {sheet:n,cfg:ATT_CFG.psicosocial};
     if(h.includes('tipo_asistencia')) return {sheet:n,cfg:ATT_CFG.proteccion};
     if(h.includes('diagnostico')||h.includes('treatment')) return {sheet:n,cfg:ATT_CFG.salud};
     if(h.includes('psicosocial')||h.includes('motive_ps')) return {sheet:n,cfg:ATT_CFG.mental}; }
   for(const n of wb.SheetNames){ const h=peekRows(wb.Sheets[n],2).flat().map(x=>fold(x));
     if(!(h.includes('codigo de caso')&&h.includes('fecha de asistencia'))) continue;
+    if(h.includes('tipo de asistencia')&&!h.includes('acciones realizadas')) return {sheet:n,cfg:ATT_CFG.psicosocial};
     if(h.includes('tipo de asistencia')) return {sheet:n,cfg:ATT_CFG.proteccion};
     if(h.includes('diagnostico principal')) return {sheet:n,cfg:ATT_CFG.salud};
     if(h.includes('tipo de atencion psicosocial')) return {sheet:n,cfg:ATT_CFG.mental}; }
@@ -1903,21 +1930,29 @@ function salAnalyze(A){
   const mk=(groups,tipo)=>groups.map(g=>g.map(i=>A.rows[i]).sort((x,y)=>(x.fecha||'').localeCompare(y.fecha||'')||(x.createdMs||0)-(y.createdMs||0))).map(rows=>({tipo,rows}));
   E.dup=[...mk(exact.groups(),'Duplicado: misma persona, mismo día y mismos datos'),...mk(near.groups().filter(g=>!g.every(i=>inExact.has(i))),'Posible duplicado: '+A.cfg.nearLabel)]
     .sort((a,b)=>(a.rows[0].benef||'').localeCompare(b.rows[0].benef||'','es'));
+  // Atenciones registradas también en el formulario complementario (Protección ↔ Atención psicosocial)
+  E.cross=[]; A.rows.forEach(a=>{ delete a.cross; });
+  if(A.comp){ const idx=new Map();
+    A.comp.rows.forEach(b=>{ if(!b.fecha||!b.nk) return; if(A.cfg.id==='psicosocial'&&!/psicosocial/.test(fold(b.tipo))) return; const k=b.pkey+'|'+b.fecha; if(!idx.has(k)) idx.set(k,[]); idx.get(k).push(b); });
+    A.rows.forEach(a=>{ if(!a.fecha||!a.nk) return; if(A.cfg.id==='proteccion'&&!/psicosocial/.test(fold(a.tipo))) return; const m=idx.get(a.pkey+'|'+a.fecha); if(m){ a.cross=m; E.cross.push(a); } }); }
   return E;
 }
+function salAttachComp(A,rows,file){ A.comp={file,rows}; A.err=salAnalyze(A); }
+const crossType=(A,a)=>A.cfg.id==='psicosocial'?a.tipo:(a.atType||a.tipo);
 function salPass(a,F=S.sal.filters){
   if(F.from||F.to){ if(!a.fecha) return false; if(F.from&&a.fecha<F.from) return false; if(F.to&&a.fecha>F.to) return false; }
   for(const k in F.cats){ const s=F.cats[k]; if(s&&s.size&&!s.has(a[k]??'(vacío)')) return false; }
   return true;
 }
 function salScoped(F=S.sal.filters){ const E=S.sal.err, f=a=>salPass(a,F);
-  return {socio:E.socio.filter(f),noCase:E.noCase.filter(f),noPerson:E.noPerson.filter(f),other:E.other.filter(x=>f(x.a)),badDate:E.badDate.filter(f),dup:E.dup.filter(g=>g.rows.some(f))}; }
+  return {socio:E.socio.filter(f),noCase:E.noCase.filter(f),noPerson:E.noPerson.filter(f),other:E.other.filter(x=>f(x.a)),badDate:E.badDate.filter(f),dup:E.dup.filter(g=>g.rows.some(f)),cross:(E.cross||[]).filter(f)}; }
 function salSummary(F){ const E=salScoped(F), dRows=g=>g.reduce((t,x)=>t+x.rows.length,0);
   const ex=E.dup.filter(g=>g.tipo.startsWith('Duplicado')), nr=E.dup.filter(g=>!g.tipo.startsWith('Duplicado'));
   const r=[['Atenciones duplicadas (misma persona, mismo día y mismos datos)',dRows(ex)],[`Atenciones posiblemente duplicadas (${S.sal.cfg.nearLabel})`,dRows(nr)],
     ['Atenciones con socio implementador no válido',E.socio.length],['Atenciones con código de caso que no existe en Registro de Familias',E.noCase.length],
     ['Atenciones cuya persona no se encontró en su familia',E.noPerson.length],...S.sal.cfg.issues.map(d=>[d.sum,E.other.filter(x=>x.def===d).length])];
   if(E.badDate.length) r.push(['Atenciones con fecha de asistencia vacía o posterior a hoy',E.badDate.length]);
+  if(S.sal.comp) r.splice(2,0,[`Atenciones registradas también en ${mmLabel(S.sal.cfg.companion)}`,E.cross.length]);
   return r; }
 const SAL_PBI_UNUSED=[['estado','Estado donde se brindó la asistencia'],['municipio','Municipio donde se brindó la asistencia'],['parroquia','Parroquia donde se brindó la asistencia'],['isAloj','¿Está en un alojamiento?'],['alojamiento','Alojamiento'],['comunidad','Comunidad'],['fecha','Fecha de asistencia','date'],['socio','Socio Implementador'],['caso','Código de caso'],['tipo','Tipo de atención'],['proyecto','Proyecto'],['diagnostico','Diagnóstico'],['estatus','Confirmado/Presuntivo'],['conducta','Conducta']];
 function salPbiTable(){
@@ -1942,6 +1977,9 @@ async function salExportErrors(){
      ...E.noPerson.map(a=>['Persona no encontrada en la familia',a.code,a.n,a.caso,a.benef,a.fecha||null,(a.ps||[]).map(p=>p.name).join('; ')])]);
   add('Otras incidencias',[{h:'Problema'},{h:'Código'},{h:'Fila en el Excel'},{h:'Código de caso'},{h:'Beneficiario'},{h:'Fecha de asistencia',type:'date'}],
     [...E.other.map(x=>[x.prob,x.a.code,x.a.n,x.a.caso,x.a.benef,x.a.fecha||null]),...E.badDate.map(a=>[a.fecha?'Fecha de asistencia posterior a hoy':'Fecha de asistencia vacía o no válida',a.code,a.n,a.caso,a.benef,a.fecha||null])]);
+  if(S.sal.comp){ const L=mmShort[S.sal.cfg.companion];
+    add('En ambos formularios',[{h:'Código'},{h:'Fila en el Excel'},{h:'Código de caso'},{h:'Beneficiario'},{h:'Fecha de asistencia',type:'date'},{h:'Tipo de atención'},{h:`Código en ${L}`},{h:`Fila en ${L}`},{h:`Tipo de atención en ${L}`}],
+      E.cross.flatMap(a=>a.cross.map(b=>[a.code,a.n,a.caso,a.benef,a.fecha||null,crossType(S.sal,a),b.code,b.n,b.atType||b.tipo]))); }
   await saveFile(`${S.sal.cfg.file}_Errores_${TODAY_YMD}.xlsx`,xlsxBlob(wb));
 }
 
@@ -1988,10 +2026,13 @@ function salViewVerify(){
   if(R&&A.rows){ const n=A.rows.length, nc=A.err.noCase.length, np=A.err.noPerson.length, ok=n-nc-np;
     link=`<div class="facts"><div><b>${fmt(n)}</b><span>Atenciones</span></div><div><b>${esc(A.minDate||'—')}</b><span>Primera atención</span></div><div><b>${esc(A.maxDate||'—')}</b><span>Última atención</span></div><div class="${ok/n>0.9?'ok':'warn'}"><b>${pct(ok,n)}</b><span>Vinculadas a una persona del Registro</span></div></div>
     ${nc/n>0.2?`<div class="note warn">${fmt(nc)} atenciones (${pct(nc,n)}) tienen un código de caso que no existe en el Registro cargado, por lo que tendrán sexo y edad “Sin datos”. Lo más probable es que el Registro esté incompleto: verifica que sea la descarga completa, sin filtro de fechas.</div>`:''}`; }
+  const cmp=A.cfg.companion, compBox=!cmp||A.fatal.length?'':(A.comp?`<div class="panel" style="margin-bottom:18px"><div class="row" style="justify-content:space-between"><div><b>Formulario complementario: ${esc(mmLabel(cmp))}</b><div class="muted" style="font-size:14px">${esc(A.comp.file)} · ${fmt(A.comp.rows.length)} registros · ${fmt((A.err.cross||[]).length)} atenciones de este archivo también están registradas allí</div></div><label class="btn sm"><input type="file" id="compIn" accept=".xlsx,.xls" hidden>Cambiar archivo</label></div></div>`
+    :`<div class="note">Para depurar este archivo se recomienda cargar también el formulario de <b>${esc(mmLabel(cmp))}</b>: así se identifican las atenciones registradas en ambos. Solo sirve de guía para la limpieza; las exportaciones son de este archivo.</div>
+      <div class="drop" id="compDrop" tabindex="0" role="button" aria-label="Cargar formulario complementario" style="margin-bottom:18px"><strong>Carga aquí el Excel de ${esc(mmLabel(cmp))} (recomendado)</strong><span>Opcional</span></div><input type="file" id="compIn" accept=".xlsx,.xls" hidden>`);
   return `<h1>${esc(A.cfg.name)}</h1>
   <p class="lead">${esc(A.cfg.lead)} Cada atención se vincula con su familia por el Código de caso y con la persona por el nombre.</p>
   ${A.fatal.length?`<div class="note bad">Faltan columnas necesarias: ${esc(A.fatal.join(', '))}.</div>`:''}
-  ${regBox}${link}
+  ${regBox}${compBox}${link}
   ${A.rows?`<h2>Socios implementadores válidos</h2><div class="panel">
     <p class="muted" style="margin:0 0 8px;font-size:14px">Marca los socios autorizados para este tipo de atención. Las atenciones de socios no marcados se reportan en la limpieza de datos, pero se incluyen igual en Power BI y en el informe.</p>
     <div class="row" style="margin:0 0 6px"><button class="btn sm" type="button" id="validAll">Seleccionar todos</button><button class="btn sm" type="button" id="validNone">Quitar todos</button></div>
@@ -2056,7 +2097,7 @@ function salRepData(){
     psi:rows.filter(a=>a.atType), atTypes:countBy(rows,a=>a.atType), motIng:tok(rows,'motIng'), estAcomp:countBy(rows.filter(a=>a.atType),a=>a.estAcomp||'Sin dato'),
     kEcho:rows.reduce((t,a)=>t+(a.kitEcho||0),0), kUs:rows.reduce((t,a)=>t+(a.kitUs||0),0), kDhr:rows.reduce((t,a)=>t+(a.kitDhr||0),0),
     kits:rows.reduce((t,a)=>t+(a.kitEcho||0)+(a.kitUs||0)+(a.kitDhr||0),0), kitAt:rows.filter(a=>((a.kitEcho||0)+(a.kitUs||0)+(a.kitDhr||0))>0).length,
-    motivo:tok(rows,'motivo'), psico:countBy(rows,a=>a.psico||'Sin dato'),
+    motIngT:tok(rows,'motIng'), motivo:tok(rows,'motivo'), psico:countBy(rows,a=>a.psico||'Sin dato'),
     sesiones:(()=>{ const c=[['1.ª sesión',0],['2.ª sesión',0],['3.ª sesión',0],['4.ª sesión o más',0],['Sin número de sesión',0]]; rows.forEach(a=>{ const v=a.sesion; c[v==null?4:Math.min(v,4)-1][1]++; }); return c.filter(x=>x[1]); })(),
     primera:rows.filter(a=>a.sesion===1).length, conSesion:rows.filter(a=>a.sesion!=null).length,
     q:{dup:dupRows.size,socio:E.socio.length,sinVinculo:E.noCase.length+E.noPerson.length,other:new Set(E.other.filter(x=>salPass(x.a,R)).map(x=>x.a)).size}};
@@ -2088,7 +2129,7 @@ async function salPdf(ext){
   fill(C.blue); doc.rect(0,0,W,30,'F'); fill(C.blue2); doc.rect(0,30,W,1.4,'F');
   let tx=M;
   if(R.logo){ try{ const h=16, w=Math.min(40,h*R.logo.w/R.logo.h); fill(C.white); doc.roundedRect(M,7,w+4,h+4,1.5,1.5,'F'); doc.addImage(R.logo.data,R.logo.fmt,M+2,9,w,h); tx=M+w+9; }catch(e){ console.warn(e); } }
-  const MH=S.sal.cfg.id==='mental', PR=S.sal.cfg.id==='proteccion';
+  const MH=S.sal.cfg.id==='mental', PR=S.sal.cfg.id==='proteccion', PS=S.sal.cfg.id==='psicosocial';
   T(fit(R.title||S.sal.cfg.title,W-M-tx-58,15,true),tx,14,{size:15,bold:true,c:C.white});
   T(S.sal.cfg.sub,tx,20.5,{size:8.5,c:[214,226,248]});
   T('PERIODO',W-M,11.5,{size:6.5,bold:true,c:[180,200,240],align:'right'}); T(R.from&&R.to?`${dmy(R.from)} – ${dmy(R.to)}`:'Todo el periodo',W-M,16.5,{size:9,bold:true,c:C.white,align:'right'});
@@ -2107,8 +2148,8 @@ async function salPdf(ext){
     s.forEach(([l,v],i)=>{ const bh=Math.max(0.4,(h-6)*v/max), x=LX+i*bw+bw*0.15, w=bw*0.7; fill(C.blue); doc.rect(x,base-bh,w,bh,'F');
       T(N(v),x+w/2,base-bh-1,{size:6.2,bold:true,align:'center'}); T(fit(l,bw+1,5.8),x+w/2,base+3.2,{size:5.8,c:C.grey,align:'center'}); });
     yl=base+9; }
-  yl=section(PR?'Tipos de asistencia':MH?'Motivos o problemáticas más frecuentes':'Diagnósticos más frecuentes',LX,yl);
-  yl=bars((PR?X.tipos:MH?X.motivo:X.diag).slice(0,8),LX,yl,HW,{lw:HW*0.52,c:C.blue2,total:X.rows.length});
+  yl=section(PS?'Tipos de atención':PR?'Tipos de asistencia':MH?'Motivos o problemáticas más frecuentes':'Diagnósticos más frecuentes',LX,yl);
+  yl=bars((PS||PR?X.tipos:MH?X.motivo:X.diag).slice(0,8),LX,yl,HW,{lw:HW*0.52,c:C.blue2,total:X.rows.length});
   // Derecha: pirámide
   let yr=section('Personas atendidas por sexo y edad',RX,y);
   { const cx=RX+HW/2, gap=8, half=HW/2-gap-9, pmax=Math.max(1,...X.pyr.flatMap(r=>[r.m,r.h]));
@@ -2123,6 +2164,7 @@ async function salPdf(ext){
   yr=bars((useParr?X.parr:X.lugar).slice(0,5),RX,yr,HW,{lw:HW*0.5,total:X.rows.length})+6;
   if(PR){ yr=section('Orientaciones brindadas',RX,yr); if(X.orients.length) yr=bars(X.orients.slice(0,6),RX,yr,HW,{lw:HW*0.56,c:C.blue2,total:X.rows.length}); else { T('Sin orientaciones registradas en el periodo.',RX,yr+3,{size:7.2,c:C.grey}); yr+=6; }
     yr+=6; yr=section('Kits de dignidad por proyecto',RX,yr); yr=bars([['DHR',X.kDhr+X.kUs],['ECHO',X.kEcho]].sort((x,y)=>y[1]-x[1]),RX,yr,HW,{c:C.blue,total:Math.max(1,X.kits)}); }
+  else if(PS){ yr=section('Motivos de ingreso',RX,yr); yr=bars(X.motIngT.slice(0,6),RX,yr,HW,{lw:HW*0.56,c:C.blue2,total:X.rows.length}); }
   else if(MH){ yr=section('Tipo de atención psicosocial',RX,yr); yr=bars(X.psico.slice(0,7),RX,yr,HW,{lw:HW*0.52,c:C.blue2,total:X.rows.length}); }
   else { yr=section('Diagnóstico confirmado o presuntivo',RX,yr);
   { const ST=X.estatus, tot=ST.reduce((t,a)=>t+a[1],0)||1, pal=[C.blue,C.blue2,[150,185,235],[200,208,222],[230,233,240],[110,130,170]]; let xx=RX;
@@ -2130,7 +2172,7 @@ async function salPdf(ext){
     yr+=8.5; let lx=RX; ST.forEach(([l,v],i)=>{ const s=`${l} ${pct(v,tot)}`; doc.setFontSize(6.8); const w=doc.getTextWidth(s)+7; if(lx+w>RX+HW){ lx=RX; yr+=4.2; } fill(pal[i%pal.length]); doc.rect(lx,yr-2.3,2.6,2.6,'F'); T(s,lx+3.6,yr,{size:6.8,c:C.grey}); lx+=w; }); yr+=4; } }
   // Franja complementaria
   y=need(Math.max(yl,yr)+5,21);
-  const strip=[[pct(X.aloj,X.rows.length),'de las atenciones se dieron a personas en alojamientos'],MH?[pct(X.primera,X.conSesion),'de las atenciones con sesión registrada fueron primeras sesiones']:[pct(X.deriv,X.rows.length),'de las atenciones incluyeron una derivación'],[pct(X.nna,X.conEdad),'de las personas atendidas tienen menos de 18 años'],[pct(X.linked,X.rows.length),'de las atenciones están vinculadas al Registro de Familias']];
+  const strip=[[pct(X.aloj,X.rows.length),'de las atenciones se dieron a personas en alojamientos'],(MH||PS)?[pct(X.primera,X.conSesion),'de las atenciones con sesión registrada fueron primeras sesiones']:[pct(X.deriv,X.rows.length),'de las atenciones incluyeron una derivación'],[pct(X.nna,X.conEdad),'de las personas atendidas tienen menos de 18 años'],[pct(X.linked,X.rows.length),'de las atenciones están vinculadas al Registro de Familias']];
   stroke(C.line); doc.setLineWidth(0.3); doc.line(M,y,W-M,y); doc.line(M,y+15,W-M,y+15);
   strip.forEach(([v,l],i)=>{ const x=M+i*(CW/4); T(v,x+2,y+6.5,{size:11,bold:true,c:C.blue}); doc.setFontSize(6.6); T(doc.splitTextToSize(l,CW/4-6).slice(0,2).join('\n'),x+2,y+10.3,{size:6.6,c:C.grey}); });
   y+=21;
@@ -2150,8 +2192,8 @@ async function salPdf(ext){
     .forEach(([l,v],i)=>{ const yy=yq+14.5+i*4.6; T(fit(l,HW-22,6.8),RX+5,yy,{size:6.8,c:C.grey}); T(N(v),RX+HW-3,yy,{size:6.8,bold:true,align:'right'}); });
   yq+=qh;
   y=Math.max(ye,yq)+8;
-  { const items=PR?X.acciones.slice(0,5):MH?X.sesiones:X.conducta.slice(0,4);
-    if(items.length){ y=need(y,8+items.length*6); y=section(PR?'Acciones realizadas':MH?'Atenciones por número de sesión':'Conducta indicada',LX,y); y=bars(items,LX,y,PR?CW:HW,{lw:PR?CW*0.5:undefined,c:C.blue2,total:X.rows.length})+5; } }
+  { const items=PR?X.acciones.slice(0,5):(MH||PS)?X.sesiones:X.conducta.slice(0,4);
+    if(items.length){ y=need(y,8+items.length*6); y=section(PR?'Acciones realizadas':(MH||PS)?'Atenciones por número de sesión':'Conducta indicada',LX,y); y=bars(items,LX,y,PR?CW:HW,{lw:PR?CW*0.5:undefined,c:C.blue2,total:X.rows.length})+5; } }
   if(PR&&X.psi.length){ const nL=Math.min(6,X.atTypes.length), nR=Math.min(5,X.motIng.length);
     y=need(y,14+Math.max(nL,nR)*6+12); y=section('Atención psicosocial',M,y)+1;
     T('Tipo de atención',LX,y+1,{size:7,bold:true,c:C.grey}); T('Motivo de ingreso',RX,y+1,{size:7,bold:true,c:C.grey}); y+=3;
@@ -2182,12 +2224,20 @@ function salViewReport(){
   </div>
   <div class="actions"><button class="btn" type="button" id="rBack">Volver a exportar</button><button class="btn primary" type="button" id="rPdf">Descargar PDF</button></div>`;
 }
+function salReattachComp(){ const C=S.salComp; if(!C||!S.sal||!S.sal.rows||!S.registro) return; const o=salLoad(C.wb,C.name,S.registro,C.type); if(o.rows) salAttachComp(S.sal,o.rows,C.name); }
+async function loadCompFile(f){
+  busy(true); await nextFrame();
+  try{ const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}), want=S.sal.cfg.companion, det=detectForm(wb);
+    if(det!==want){ toast(`Ese archivo no parece ser de ${mmLabel(want)}.`); return; }
+    S.salComp={wb,name:f.name,type:want}; salReattachComp(); if(!S.sal.rows) toast('Se usará cuando cargues el Registro de Familias.'); render();
+  }catch(e){ console.error(e); toast('No se pudo leer el archivo: '+(e.message||e)); } finally{ busy(false); }
+}
 async function loadRegistroFile(f){
   busy(true); await nextFrame();
   try{ const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
     if(!famDetect(wb)){ toast('Ese archivo no es un Registro de Familias (faltan las pestañas vzl_cases y beneficiaries_vzl).'); return; }
     const D=famLoad(wb,f.name); if(D.fatal.length){ toast('Al Registro le faltan columnas: '+D.fatal.join(', ')); return; }
-    S.registro=D; S.sal=salLoad(S.salWb.wb,S.salWb.name,D,S.salWb.type); render();
+    S.registro=D; S.sal=salLoad(S.salWb.wb,S.salWb.name,D,S.salWb.type); salReattachComp(); render();
   }catch(e){ console.error(e); toast('No se pudo leer el Registro: '+(e.message||e)); } finally{ busy(false); }
 }
 function salBind(){
@@ -2200,7 +2250,13 @@ function salBind(){
     document.querySelectorAll('[data-valid]').forEach(b=>b.onchange=()=>{ const A=S.sal, k=b.dataset.valid; if(b.checked) A.valid.add(k); else A.valid.delete(k); A.err=salAnalyze(A); });
     const setAllValid=on=>{ const A=S.sal; document.querySelectorAll('[data-valid]').forEach(b=>{ b.checked=on; if(on) A.valid.add(b.dataset.valid); else A.valid.delete(b.dataset.valid); }); A.err=salAnalyze(A); };
     on('#validAll','click',()=>setAllValid(true)); on('#validNone','click',()=>setAllValid(false));
-    on('#back','click',restart); on('#next','click',()=>{ S.step=3; render(); });
+    { const d2=$('#compDrop'); if(d2){ d2.onclick=()=>$('#compIn').click(); d2.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('#compIn').click(); } };
+      d2.ondragover=e=>{ e.preventDefault(); d2.classList.add('over'); }; d2.ondragleave=()=>d2.classList.remove('over'); d2.ondrop=e=>{ e.preventDefault(); d2.classList.remove('over'); if(e.dataTransfer.files[0]) loadCompFile(e.dataTransfer.files[0]); }; } }
+    on('#compIn','change',e=>{ if(e.target.files[0]) loadCompFile(e.target.files[0]); e.target.value=''; });
+    on('#back','click',restart);
+    on('#next','click',async()=>{ const A=S.sal, cmp=A.cfg.companion;
+      if(cmp&&!A.comp){ const ok=await confirmBox('¿Continuar sin el formulario complementario?',`Para depurar este archivo se recomienda cargar también el formulario de ${mmLabel(cmp)}, para identificar las atenciones registradas en ambos. ¿Deseas continuar sin cargarlo?`,'Continuar sin cargarlo'); if(!ok) return; }
+      S.step=3; render(); });
   }
   if(S.step===3){
     const F=S.sal.filters, upd=()=>{ $('#sN').textContent=fmt(salPbiTable().data.length); $('#salSum').innerHTML=salSumRows(salSummary()); };
@@ -3015,7 +3071,7 @@ const NFI_MODULE={id:'nfi',name:'Entrega de kits',views:[null,null,nfiViewVerify
 /* ============ Depurador múltiple ============ */
 const MM_TYPES=FORM_TYPES.filter(([v])=>v!=='registro'&&v!=='generic');
 const mmLabel=t=>(FORM_TYPES.find(x=>x[0]===t)||[t,t])[1];
-const mmShort={salud:'Salud',mental:'Salud mental',proteccion:'Protección',comunitarias:'Comunitarias',nfi:'NFI',wash:'WASH'};
+const mmShort={salud:'Salud',mental:'Salud mental',proteccion:'Protección',psicosocial:'Psicosocial',comunitarias:'Comunitarias',nfi:'NFI',wash:'WASH'};
 function mmInitLoad(){ if(!S.mmLoad) S.mmLoad=[{type:'registro',f:null,wb:null,det:null,fixed:true},{type:'',f:null,wb:null,det:null}]; return S.mmLoad; }
 function withCtx(it,fn){
   const keep={fam:S.fam,sal:S.sal,nfi:S.nfi,com:S.com};
@@ -3034,6 +3090,7 @@ function viewModeChoice(){
 }
 function viewMultiLoad(){
   const L=mmInitLoad(), ok=L[0].f&&L.slice(1).some(r=>r.f&&r.type);
+  const regMissing=!L[0].f&&L.slice(1).some(r=>r.f);
   const row=(r,i)=>`<div class="mmrow">
     <div class="mmtype">${r.fixed?`<b>Registro de Familias</b><span class="muted">Obligatorio</span>`:`<select class="in" data-mmtype="${i}" aria-label="Tipo de formulario"><option value="">Selecciona el formulario…</option>${MM_TYPES.map(([v,l])=>`<option value="${v}" ${v===r.type?'selected':''}>${l}</option>`).join('')}</select>`}</div>
     <div class="mmfile"><label class="btn sm"><input type="file" accept=".xlsx,.xls,.xlsm" data-mmfile="${i}" hidden>${r.f?'Cambiar archivo':'Seleccionar archivo'}</label>
@@ -3041,9 +3098,11 @@ function viewMultiLoad(){
       ${r.f&&r.det&&r.det!==r.type?`<span class="status warn">El archivo parece ser: ${esc(mmLabel(r.det))}</span>`:''}</div>
     ${r.fixed?'<span></span>':`<button class="btn sm" type="button" data-mmdel="${i}" aria-label="Quitar fila">Quitar</button>`}</div>`;
   return `<h1>Depurador múltiple</h1>
-  <p class="lead">Agrega una línea por formulario: elige el tipo y selecciona su archivo. El Registro de Familias es obligatorio porque vincula a las familias y personas de todos los formularios. Usa un archivo por tipo de formulario.</p>
+  <p class="lead">Arrastra todos los Excel a la vez: cada archivo se identifica automáticamente y aparece en la lista con su tipo, que puedes corregir en el desplegable. El Registro de Familias es obligatorio porque vincula a las familias y personas de todos los formularios. Usa un archivo por tipo de formulario.</p>
+  <div class="drop" id="mmDrop" tabindex="0" role="button" aria-label="Seleccionar archivos" style="margin-bottom:16px"><strong>Arrastra aquí todos los Excel o haz clic para buscarlos</strong><span>Se identifican automáticamente</span></div><input type="file" id="mmMulti" accept=".xlsx,.xls,.xlsm" multiple hidden>
   <div class="panel">${L.map(row).join('')}
     <div class="row" style="margin-top:12px"><button class="btn" type="button" id="mmAdd">Agregar formulario</button></div></div>
+  ${regMissing?'<div class="note bad" style="margin-top:14px">Falta el Registro de Familias: cárgalo para poder continuar.</div>':''}
   <div class="actions"><button class="btn" type="button" id="mmMode">Cambiar de modo</button><button class="btn primary" type="button" id="mmGo" ${ok?'':'disabled'}>Verificar archivos</button></div>`;
 }
 async function mmProcess(){
@@ -3060,6 +3119,7 @@ async function mmProcess(){
         else obj=salLoad(r.wb,r.f.name,D,r.type);
       }catch(e){ console.error(e); obj={fatal:['No se pudo leer con el tipo elegido']}; }
       items.push({type:r.type,label:mmLabel(r.type),file:r.f.name,obj}); }
+    { const pr=items.find(x=>x.type==='proteccion'&&x.obj.rows), ps=items.find(x=>x.type==='psicosocial'&&x.obj.rows); if(pr&&ps){ salAttachComp(pr.obj,ps.obj.rows,ps.file); salAttachComp(ps.obj,pr.obj.rows,pr.file); } }
     const ds=[]; items.forEach(it=>{ const o=it.obj; if(o.fatal&&o.fatal.length) return; if(o.minDate) ds.push(o.minDate); if(o.maxDate) ds.push(o.maxDate); });
     ds.sort(); S.mm={items,open:0,inc:new Set(items.map((_,i)=>i)),filters:{from:ds[0]||'',to:ds[ds.length-1]||'',cats:{}},minDate:ds[0]||'',maxDate:ds[ds.length-1]||'',title:'Informe global de asistencia',notes:''};
     S.mode=MULTI_MODULE; S.step=2;
@@ -3188,6 +3248,7 @@ function mmViewExport(){
       <div class="field" style="margin-bottom:8px"><label for="mmTitle">Título</label><input class="in" id="mmTitle" style="width:100%" maxlength="70" value="${esc(M.title)}"></div>
       <div class="field" style="margin-bottom:8px"><label for="mmNotes">Observaciones (opcional)</label><textarea class="in" id="mmNotes" rows="3" style="width:100%;resize:vertical" maxlength="800">${esc(M.notes)}</textarea></div>
       <button class="btn primary" type="button" id="mmPdfBtn">Descargar PDF</button></div>
+    <div class="exp"><h3>SITREP</h3><p>Un Excel con el formato del SITREP: personas por sector (CCCM, Shelter and settlements, WASH, Health y Protection) y estado (La Guaira, Carabobo, Distrito Capital, Miranda y Yaracuy), cantidades de kits entregadas y totales de familias, personas y atenciones. Incluye una hoja con los criterios de cálculo.</p><button class="btn primary" type="button" id="mmSitrep">Descargar SITREP</button></div>
     <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
   </div>
   <div class="actions"><button class="btn" type="button" id="back">Volver</button><button class="btn" type="button" id="restart">Procesar otros archivos</button></div>`;
@@ -3219,13 +3280,29 @@ function mmBind(){
   if(S.step===4){
     const run=fn=>async()=>{ busy(true); await nextFrame(); try{ await fn(); }catch(e){ console.error(e); toast('Error al exportar: '+(e.message||e)); } busy(false); };
     document.querySelectorAll('[data-mmclean]').forEach(b=>b.onclick=run(()=>mmExportClean(+b.dataset.mmclean)));
-    on('#mmPbi','click',run(mmExportPbi)); on('#mmPdfBtn','click',run(mmPdf));
+    on('#mmPbi','click',run(mmExportPbi)); on('#mmPdfBtn','click',run(mmPdf)); on('#mmSitrep','click',run(sitrepExport));
     on('#mmTitle','input',e=>{ M.title=e.target.value; }); on('#mmNotes','input',e=>{ M.notes=e.target.value; });
     on('#back','click',()=>{ S.step=3; render(); }); on('#restart','click',restart);
   }
 }
 const MULTI_MODULE={id:'multi',name:'Depurador múltiple',views:[null,null,mmViewVerify,mmViewReview,mmViewExport],bind:mmBind};
+async function mmHandleFiles(list){
+  const L=mmInitLoad(), files=[...list].filter(f=>/\.(xlsx|xls|xlsm)$/i.test(f.name)); if(!files.length){ toast('Selecciona archivos .xlsx o .xls descargados del IMS.'); return; }
+  busy(true); await nextFrame();
+  for(const f of files){ try{ const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}), det=detectForm(wb);
+      if(det==='registro'){ if(L[0].f) toast(`Ya hay un Registro de Familias; se reemplazó por ${f.name}.`); Object.assign(L[0],{f,wb,det}); continue; }
+      const type=det==='generic'?'':det, same=type?L.slice(1).find(r=>r.type===type&&r.f):null;
+      if(same){ toast(`Ya había un archivo de ${mmLabel(type)}; se reemplazó por ${f.name}.`); Object.assign(same,{f,wb,det}); continue; }
+      const empty=L.slice(1).find(r=>!r.f);
+      if(empty) Object.assign(empty,{f,wb,det,type:type||empty.type}); else L.push({type,f,wb,det});
+      if(det==='generic') toast(`No se reconoció ${f.name}: elige su tipo en la lista.`);
+    }catch(e){ console.error(e); toast(`No se pudo leer ${f.name}.`); } }
+  busy(false); render();
+}
 function mmLoadBind(){
+  { const d=$('#mmDrop'), inp=$('#mmMulti'); if(d){ d.onclick=()=>inp.click(); d.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); inp.click(); } };
+      d.ondragover=e=>{ e.preventDefault(); d.classList.add('over'); }; d.ondragleave=()=>d.classList.remove('over'); d.ondrop=e=>{ e.preventDefault(); d.classList.remove('over'); mmHandleFiles(e.dataTransfer.files); };
+      inp.onchange=()=>{ mmHandleFiles(inp.files); inp.value=''; }; } }
   const L=mmInitLoad(), re=()=>render();
   document.querySelectorAll('[data-mmtype]').forEach(s=>s.onchange=()=>{ L[+s.dataset.mmtype].type=s.value; re(); });
   document.querySelectorAll('[data-mmfile]').forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; const r=L[+inp.dataset.mmfile]; busy(true); await nextFrame();
@@ -3237,7 +3314,7 @@ function mmLoadBind(){
 }
 
 /* ============ Tablero interactivo ============ */
-const DASH_COLORS={registro:'#8FA6D6',salud:'#0033A0',mental:'#418FDE',proteccion:'#6E5BC2',comunitarias:'#D99A2B',nfi:'#5C7FB8',wash:'#26A69A'};
+const DASH_COLORS={registro:'#8FA6D6',salud:'#0033A0',mental:'#418FDE',proteccion:'#6E5BC2',psicosocial:'#B05FA8',comunitarias:'#D99A2B',nfi:'#5C7FB8',wash:'#26A69A'};
 const DASH_AGES=[['0 - 17',[['0 - 4',0,4],['5 - 11',5,11],['12 - 17',12,17]]],['18 o más',[['18 - 59',18,59],['60 +',60,150]]]];
 const DASH_SEX=['Hombre','Mujer','Otro','Sin datos'];
 const dSex=p=>{ if(!p||typeof p!=='object') return 'Sin datos'; const f=fold(p.sexo); return f==='hombre'?'Hombre':f==='mujer'?'Mujer':p.sexo?'Otro':'Sin datos'; };
@@ -3413,6 +3490,74 @@ async function dashPdf(){
     const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,128,140); doc.text(`Generado con el Depurador IMS el ${dmy(TODAY_YMD)} · Herramienta elaborada por Yohan Mayorga, Monitoreo y Evaluación, OIM Venezuela`,M,H-4); doc.text(`Página ${i} de ${n}`,W-M,H-4,{align:'right'}); }
     const F=S.dash.F; await saveFile(`Tablero_IMS${F.from&&F.to?`_${F.from}_a_${F.to}`:''}.pdf`,doc.output('blob'));
   } finally { if(prevTheme) root.dataset.theme=prevTheme; else delete root.dataset.theme; document.body.classList.remove('capturing'); }
+}
+
+/* ============ SITREP (depurador múltiple) ============ */
+const SIT_STATES=['La Guaira','Carabobo','Distrito Capital','Miranda','Yaracuy'];
+const SIT_ALOJ=['cesar nieves','polideportivo','mare abajo','campo de golf','playa grande'];
+const sitState=v=>SIT_STATES.find(s=>fold(s)===fold(v))||'La Guaira';
+const SIT_ALOJ_NAMES=['Polideportivo José María Vargas','Estadio César Nieves','Estadio Playa Grande','Campo de golf','Mare Abajo'];
+function sitrepData(){
+  const M=S.mm, F=M.filters, inP=d=>!!d&&(!F.from||d>=F.from)&&(!F.to||d<=F.to), its=mmIncluded(), by=t=>its.find(it=>it.type===t);
+  const zero=()=>Object.fromEntries(SIT_STATES.map(s=>[s,0])), sets=()=>Object.fromEntries(SIT_STATES.map(s=>[s,new Set()]));
+  const R={cccm:zero(),shelter:sets(),wash:sets(),health:zero(),prot:zero()}, qty={NFI:0,WASH:0};
+  const has={cccm:false,shelter:false,wash:false,health:false,prot:false}, aloj=new Set(SIT_ALOJ_NAMES.map(fold));
+  let famsTot=0, persTot=0;
+  const reg=by('registro');
+  if(reg){ has.cccm=true; const o=reg.obj;
+    o.fams.forEach(f=>{ if(o.famByNum.get(f.num)!==f||!inP(f.created)) return; const n=(o.byFam.get(f.num)||[]).length;
+      famsTot++; persTot+=n; if(aloj.has(fold(f.alojamiento))) R.cccm['La Guaira']+=n; }); }
+  ['nfi','wash'].forEach(t=>{ const it=by(t); if(!it) return; const o=it.obj;
+    o.rows.forEach(a=>{ if(!inP(a.fecha)) return; const cats=new Set(); a.items.forEach(x=>{ const c=o.cat[x.ki]; if(c==='NFI'||c==='WASH'){ qty[c]+=x.q; cats.add(c); } });
+      const st=sitState(a.estado); cats.forEach(c=>{ const tgt=c==='NFI'?R.shelter:R.wash; if(c==='NFI') has.shelter=true; else has.wash=true; a.ps.forEach(p=>tgt[st].add(p)); }); }); });
+  ['salud','mental'].forEach(t=>{ const it=by(t); if(!it) return; has.health=true; it.obj.rows.forEach(a=>{ if(inP(a.fecha)) R.health[sitState(a.estado)]++; }); });
+  { const it=by('proteccion'); if(it){ has.prot=true; it.obj.rows.forEach(a=>{ if(inP(a.fecha)) R.prot[sitState(a.estado)]++; }); } }
+  { const it=by('psicosocial'); if(it){ has.prot=true; it.obj.rows.forEach(a=>{ if(inP(a.fecha)&&!a.cross) R.prot[sitState(a.estado)]++; }); } }
+  const vals=r=>SIT_STATES.map(s=>typeof r[s]==='number'?r[s]:r[s].size);
+  const rows=[['CCCM',vals(R.cccm),null,has.cccm],['Shelter and settlements',vals(R.shelter),qty.NFI,has.shelter],['WASH',vals(R.wash),qty.WASH,has.wash],['Health',vals(R.health),null,has.health],['Protection',vals(R.prot),null,has.prot]];
+  const atn=rows.reduce((t,[, v,,h])=>t+(h?v.reduce((a,b)=>a+b,0):0),0);
+  return {rows,fams:famsTot,people:persTot,atn,F};
+}
+async function sitrepExport(){
+  mmApplyPeriod();
+  const X=sitrepData(), F=X.F, per=F.from&&F.to?`${dmy(F.from)} – ${dmy(F.to)}`:'Todo el periodo';
+  const fname=`SITREP${F.from&&F.to?`_${F.from}_a_${F.to}`:''}.xlsx`;
+  const criterios=[
+    ['CCCM','Todas las personas del Registro de Familias cuyas familias marcaron como alojamiento: Polideportivo José María Vargas, Estadio César Nieves, Estadio Playa Grande, Campo de golf o Mare Abajo. Todas se asignan a La Guaira. Periodo según la fecha de registro.'],
+    ['Shelter and settlements','Personas distintas (integrantes de la familia según el Registro) de las entregas que incluyeron kits clasificados como NFI, por estado de la entrega. «Cantidades entregadas»: unidades de kits NFI.'],
+    ['WASH','Misma lógica que Shelter, con los kits clasificados como WASH (de los formularios NFI y WASH).'],
+    ['Health','Número de líneas de los formularios de salud y salud mental (cada línea es una persona atendida), por estado de la atención.'],
+    ['Protection','Número de líneas del formulario de protección más las líneas de atención psicosocial (cada línea es una persona atendida), por estado de la atención. Las atenciones psicosociales que también están registradas en el formulario de protección se cuentan una sola vez.'],
+    ['Estados','Las personas de estados distintos a La Guaira, Carabobo, Distrito Capital, Miranda y Yaracuy, o sin estado registrado, se suman a La Guaira.'],
+    ['Familias (Total)','Todas las familias del Registro de Familias registradas en el periodo.'],
+    ['Personas (Total)','Todas las personas (integrantes) de esas familias del Registro de Familias.'],
+    ['Atenciones (Total)','Suma de la columna Total de la tabla (CCCM, Shelter and settlements, WASH, Health y Protection).'],
+    ['Personas en kits','En Shelter y WASH se cuentan los integrantes de la familia que figuran en el Registro de Familias, sin repetir dentro de cada estado.']];
+  if(window.ExcelJS){
+    const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('SITREP',{views:[{showGridLines:false}]});
+    const peach='FFFBE0D4', blue='FFDCE8F7', yellow='FFFFFF00', thin={style:'thin',color:{argb:'FF000000'}}, box={top:thin,left:thin,bottom:thin,right:thin};
+    ws.columns=[{width:26},{width:13},{width:12},{width:16},{width:12},{width:12},{width:12},{width:3},{width:22},{width:12}];
+    ws.getCell('A1').value='SITREP · OIM Venezuela'; ws.getCell('A1').font={bold:true,size:14,color:{argb:'FF0033A0'}};
+    ws.getCell('A2').value=`Periodo: ${per} · Generado el ${dmy(TODAY_YMD)}`; ws.getCell('A2').font={italic:true,color:{argb:'FF555555'}};
+    const hr=ws.getRow(4); ['Sector',...SIT_STATES,'Total'].forEach((h,i)=>{ const c=hr.getCell(i+1); c.value=h; c.font={bold:true}; c.border=box; });
+    const NF='#,##0;-#,##0;"-"';
+    X.rows.forEach(([name,v,q,has],i)=>{ const r=ws.getRow(5+i); r.getCell(1).value=name; r.getCell(1).font={bold:true}; r.getCell(1).border=box;
+      v.forEach((n,j)=>{ const c=r.getCell(2+j); c.value=has?n:null; c.numFmt=NF; c.border=box; });
+      const t=r.getCell(7); t.value=has?{formula:`SUM(B${5+i}:F${5+i})`,result:v.reduce((a,b)=>a+b,0)}:null; t.numFmt=NF; t.border=box; t.fill={type:'pattern',pattern:'solid',fgColor:{argb:blue}};
+      if(q!=null&&has){ const a=r.getCell(9), b=r.getCell(10); a.value='Cantidades entregadas'; b.value=q; b.numFmt='#,##0'; [a,b].forEach(c=>{ c.border=box; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:peach}}; }); } });
+    [['Familias (Total)',X.fams],['Personas (Total)',X.people],['Atenciones (Total)',{formula:'SUM(G5:G9)',result:X.atn}]].forEach(([l,v],i)=>{ const r=ws.getRow(11+i); const a=r.getCell(1), b=r.getCell(2); a.value=l; b.value=v; b.numFmt='#,##0';
+      [a,b].forEach(c=>{ c.font={bold:true}; c.border=box; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:yellow}}; }); });
+    [[peach,'Cantidades'],[blue,'Personas']].forEach(([col,l],i)=>{ const r=ws.getRow(15+i); const a=r.getCell(1), b=r.getCell(2); a.fill={type:'pattern',pattern:'solid',fgColor:{argb:col}}; b.value=l; [a,b].forEach(c=>c.border=box); });
+    const cs=wb.addWorksheet('Criterios'); cs.columns=[{width:26},{width:110}]; cs.getCell('A1').value='Cómo se calcula cada cifra'; cs.getCell('A1').font={bold:true,size:13,color:{argb:'FF0033A0'}};
+    criterios.forEach(([a,b],i)=>{ const r=cs.getRow(3+i); r.getCell(1).value=a; r.getCell(1).font={bold:true}; r.getCell(2).value=b; r.getCell(2).alignment={wrapText:true,vertical:'top'}; r.getCell(1).alignment={vertical:'top'}; });
+    const buf=await wb.xlsx.writeBuffer();
+    await saveFile(fname,new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})); return;
+  }
+  // Respaldo sin formato (si ExcelJS no cargó)
+  const wb=XLSX.utils.book_new(), aoa=[['SITREP · OIM Venezuela'],[`Periodo: ${per}`],[],['Sector',...SIT_STATES,'Total','','Cantidades entregadas'],
+    ...X.rows.map(([n,v,q,h])=>[n,...(h?v:v.map(()=>null)),h?v.reduce((a,b)=>a+b,0):null,'',q!=null&&h?q:null]),[],['Familias (Total)',X.fams],['Personas (Total)',X.people],['Atenciones (Total)',X.atn]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'SITREP'); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Concepto','Criterio'],...criterios]),'Criterios');
+  await saveFile(fname,xlsxBlob(wb));
 }
 
 /* ============ Tema claro / oscuro ============ */
