@@ -935,7 +935,7 @@ function confirmBox(title,msg,okLabel){
 async function askRestart(){
   const ok=await confirmBox('¿Empezar de nuevo?','Se descartarán los archivos cargados, las selecciones y los filtros de este proceso, y volverás a la pantalla inicial. Los archivos que ya descargaste no se ven afectados.','Sí, empezar de nuevo');
   if(!ok) return;
-  Object.assign(S,{salComp:null,mode:null,step:1,pending:null,loadMode:null,fam:null,sal:null,nfi:null,com:null,mm:null,mmLoad:null,registro:null,salWb:null,nfiWb:null,result:null,dash:null,guide:false});
+  Object.assign(S,{famAtt:null,salComp:null,mode:null,step:1,pending:null,loadMode:null,fam:null,sal:null,nfi:null,com:null,mm:null,mmLoad:null,registro:null,salWb:null,nfiWb:null,result:null,dash:null,guide:false});
   render(); toast('Listo: puedes cargar nuevos archivos.');
 }
 function render(){
@@ -1481,6 +1481,10 @@ function famSummary(){
   ];
 }
 async function famExportErrors(){
+  const att=S.mode&&S.mode.id==='multi'&&S.mm?S.mm.items.filter(it=>it.type!=='registro'&&mmOk(it)).map(it=>({type:it.type,label:it.label,obj:it.obj})):(S.famAtt||[]);
+  return regCleanExport(S.fam,att);
+}
+async function famExportErrorsOld(){
   const D=S.fam, E=famScopedErr(), wb=XLSX.utils.book_new(), add=(n,c,r)=>XLSX.utils.book_append_sheet(wb,buildSheet(c,r),n);
   const pad=n=>n==null?'':`OIM-vcs-${String(n).padStart(6,'0')}`;
   const dupP=E.dup.reduce((t,g)=>t+g.ps.length,0);
@@ -1524,6 +1528,10 @@ function famViewVerify(){
     <div><b>${esc(D.maxDate||'—')}</b><span>Último registro</span></div>
   </div>`}
   ${unk.length?`<div class="note warn">Hay valores en “Perfil o condición específica” que no están en la lista de opciones y no se marcarán en ninguna columna: ${unk.map(([t,n])=>`${esc(t)} (${n})`).join(', ')}.</div>`:''}
+  ${D.fatal.length?'':`<h2>Cruce con atenciones (recomendado para la limpieza)</h2>
+  <div class="panel"><p class="muted" style="margin:0 0 10px;font-size:14px">Para decidir qué duplicados eliminar y qué atenciones reasignar, carga los formularios de atenciones individuales (salud, salud mental, protección, psicosocial) y de entregas de kits (NFI, WASH). Si no los cargas, la limpieza marcará esa revisión como <b>pendiente</b>.</p>
+    ${(S.famAtt||[]).map((x,i)=>`<div class="pendrow"><div class="pendfile"><b>${esc(x.label)}</b><span class="muted">${esc(x.file)} · ${fmt(x.obj.rows.length)} registros</span></div><button class="btn sm" type="button" data-attdel="${i}">Quitar</button></div>`).join('')}
+    <div class="drop" id="attDrop" tabindex="0" role="button" aria-label="Cargar formularios de atenciones" style="margin-top:10px;padding:22px"><strong>Arrastra aquí los formularios de atenciones y kits</strong><span>Opcional · puedes cargar varios a la vez</span></div><input type="file" id="attIn" accept=".xlsx,.xls" multiple hidden></div>`}
   <h2>Columnas utilizadas</h2>
   <div class="scroll"><table class="ledger"><thead><tr><th>Campo</th><th>Pestaña</th><th>Columna</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table></div>
   <p class="muted" style="font-size:13px;margin:8px 0 0">* Obligatorias: son las que usan el reporte de errores, la tabla para Power BI y el informe. Las columnas adicionales del Excel se ignoran. Las columnas se ubican por su nombre interno del IMS (fila 1) o, si no existe, por su etiqueta (fila 2).</p>
@@ -1773,7 +1781,7 @@ function famViewExport(){
   return `<h1>Exportar</h1>
   <p class="lead">Este formulario no se reporta en la 345W. Elige la salida que necesitas.</p>
   <div class="exports">
-    <div class="exp"><h3>Reporte de errores</h3><p>Un Excel con el resumen y una pestaña por criterio (familias sin personas, personas sin familia, representante, fechas de nacimiento y duplicados), con código de familia y fila de origen para corregir en el IMS. No modifica el archivo original. Respeta el periodo y los criterios seleccionados.</p><button class="btn primary" type="button" id="exErr">Descargar reporte</button></div>
+    <div class="exp"><h3>Limpieza de datos</h3><p>Un Excel con las pestañas vzl_cases y beneficiaries_vzl completas y en el mismo orden, con una columna «Estado de revisión»: filas en rojo para borrar (con la acción sugerida y los pasos previos, como asignar un nuevo representante o reasignar atenciones) y celdas en amarillo para corregir, con las columnas Observaciones y Qué hacer. Incluye el detalle de duplicados. Analiza el archivo completo y no modifica el original.${(S.famAtt||[]).length?'':' <b>Sin formularios de atenciones cargados, el cruce quedará pendiente.</b>'}</p><button class="btn primary" type="button" id="exErr">Descargar reporte</button></div>
     <div class="exp"><h3>Tabla para Power BI</h3><p>Una sola tabla con una fila por persona y los datos de su familia, edad al momento del registro y una columna 1/0 por cada perfil o condición. ${fmt(n)} filas${F.from?` registradas entre el ${esc(F.from)} y el ${esc(F.to)}`:''}.</p><div class="row"><button class="btn primary" type="button" id="exPbi" ${n?'':'disabled'}>Descargar Excel</button><button class="btn" type="button" id="exCsv" ${n?'':'disabled'}>Descargar CSV</button></div></div>
     <div class="exp"><h3>Construir informe</h3><p>Un PDF de una página con el resumen de lo realizado por uno o varios equipos implementadores: familias, personas, perfil demográfico, ubicaciones y calidad de los datos. Tiene sus propios criterios de periodo, equipo y ubicación.</p><button class="btn primary" type="button" id="exRep">Construir informe</button></div>
     <div class="exp"><h3>Tablero interactivo</h3><p>Un tablero con filtros de periodo, estado, municipio, parroquia y socio: resultados por formulario, desagregación por edad y sexo, población clave, histórico, ubicaciones y socios. Se puede exportar en PDF con los filtros aplicados.</p><button class="btn primary" type="button" data-opendash>Abrir tablero</button></div>
@@ -1782,8 +1790,12 @@ function famViewExport(){
 }
 function famBind(){
   const on=(sel,ev,fn)=>{ const el=$(sel); if(el) el.addEventListener(ev,fn); };
-  const restart=()=>{ S.mode=null; S.fam=null; S.step=1; render(); };
-  if(S.step===2){ on('#back','click',restart); on('#next','click',()=>{ S.step=3; render(); }); }
+  const restart=()=>{ S.mode=null; S.fam=null; S.famAtt=null; S.step=1; render(); };
+  if(S.step===2){ on('#back','click',restart); on('#next','click',()=>{ S.step=3; render(); });
+    const d=$('#attDrop'), inp=$('#attIn'); if(d){ d.onclick=()=>inp.click(); d.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); inp.click(); } };
+      d.ondragover=e=>{ e.preventDefault(); d.classList.add('over'); }; d.ondragleave=()=>d.classList.remove('over'); d.ondrop=e=>{ e.preventDefault(); d.classList.remove('over'); famLoadAtt([...e.dataTransfer.files]); };
+      inp.onchange=()=>{ famLoadAtt([...inp.files]); inp.value=''; }; }
+    document.querySelectorAll('[data-attdel]').forEach(b=>b.onclick=()=>{ S.famAtt.splice(+b.dataset.attdel,1); render(); }); }
   if(S.step===3){
     const upd=()=>{ $('#fN').textContent=fmt(famPbiTable().data.length); $('#famSum').innerHTML=famSumRows(famSummary()); };
     const F=S.fam.filters;
@@ -3777,6 +3789,185 @@ function stateCounter(){ const sets=new Map(), sums=new Map(); let unk=new Set()
   return { add(estado,key){ const st=veMatch(estado); if(!st){ unk.add(key); return; } if(!sets.has(st)) sets.set(st,new Set()); sets.get(st).add(key); },
     addN(estado,n){ const st=veMatch(estado); if(!st){ unkSum+=n; return; } sums.set(st,(sums.get(st)||0)+n); },
     vals(){ const m=new Map(sums); sets.forEach((s,k)=>m.set(k,(m.get(k)||0)+s.size)); return m; }, unknown(){ return unk.size+unkSum; } }; }
+
+/* ============ Limpieza avanzada del Registro de Familias ============ */
+const REL_PREF=['pareja','padre madre','abuelo a','hermano a','tio a','hijo a','nieto a'];
+function regAttIndex(att){
+  const byPerson=new Map(), byFamKits=new Map(), forms={ind:[],fam:[]};
+  (att||[]).forEach(it=>{ const o=it.obj; if(!o||!o.rows) return;
+    if(it.type==='nfi'||it.type==='wash'){ forms.fam.push(it.label); o.rows.forEach(a=>{ if(a.num==null) return; if(!byFamKits.has(a.num)) byFamKits.set(a.num,[]); byFamKits.get(a.num).push({form:mmShort[it.type]||it.label,code:a.code,fecha:a.fecha}); }); return; }
+    if(ATT_CFG[it.type]){ forms.ind.push(it.label); o.rows.forEach(a=>{ if(!a.p) return; if(!byPerson.has(a.p)) byPerson.set(a.p,[]); byPerson.get(a.p).push({form:mmShort[it.type]||it.label,code:a.code,fecha:a.fecha}); }); } });
+  return {byPerson,byFamKits,forms,indChecked:forms.ind.length>0,famChecked:forms.fam.length>0};
+}
+const ageTxt=p=>p.age!=null?`${p.age} años`:'edad sin dato';
+const attTxt=list=>{ const by=countBy(list,x=>x.form); return by.map(([f,n])=>`${n} de ${f}`).join(', '); };
+function regCleanPlan(D,att){
+  const E=D.err, X=regAttIndex(att), isL=p=>p.rel.startsWith('representante');
+  const notes=new Map(), famNotes=new Map(), dupRows=[];
+  const note=(m,k)=>{ if(!m.has(k)) m.set(k,{red:false,sev:'',obs:[],act:[],cells:new Set(),pending:false}); return m.get(k); };
+  const SEVR={'':0,'Corrección':1,'Baja':2,'Media':3,'Alta':4}, bump=(n,s)=>{ if(SEVR[s]>SEVR[n.sev]) n.sev=s; };
+  const members=f=>D.famByNum.get(f.num)===f?(D.byFam.get(f.num)||[]):[];
+  const valid=p=>(p.id?1:0)+(p.birth?1:0);
+  const del=new Map();
+  // 1) Duplicados: decidir a quién conservar
+  E.dup.forEach(g=>{
+    const score=p=>{ const fam=p.f?members(p.f):[]; return (isL(p)?40:0)+((X.byPerson.get(p)||[]).length?30:0)+(p.f&&X.byFamKits.get(p.fam)?10:0)+valid(p)*3+(fam.length>1?2:0); };
+    const ranked=g.ps.slice().sort((a,b)=>score(b)-score(a)||((a.f&&a.f.created||'9')<(b.f&&b.f.created||'9')?-1:1)||a.n-b.n);
+    const keep=ranked[0], tie=ranked.length>1&&score(ranked[0])===score(ranked[1])&&isL(ranked[0])&&isL(ranked[1]);
+    ranked.slice(1).forEach(p=>del.set(p,{keep,crit:g.crit,tie}));
+    ranked.forEach((p,i)=>dupRows.push([g.id,i===0?'Conservar':'Eliminar',p.f?p.f.code:'(sin familia)',p.n,p.name,p.parentesco,p.birth||null,p.idRaw,(X.byPerson.get(p)||[]).length||(X.indChecked?0:'Sin verificar'),
+      i===0?`Se conserva: ${[isL(p)?'es representante':'',(X.byPerson.get(p)||[]).length?'tiene atenciones':'',valid(p)?'datos más completos':''].filter(Boolean).join(', ')||'primer registro'}`:`Duplicado de ${keep.name} en ${keep.f?keep.f.code:'(sin familia)'} (${g.crit})`]));
+  });
+  // 2) Consecuencias de cada eliminación
+  const famDelete=new Set();
+  D.fams.forEach(f=>{ const ms=members(f); if(ms.length&&ms.every(p=>del.has(p))) famDelete.add(f); });
+  del.forEach((d,p)=>{ const n=note(notes,p), k=d.keep, kf=k.f?k.f.code:'(sin familia)';
+    n.red=true; bump(n,'Baja');
+    n.obs.push(`Persona duplicada: también está en ${kf} (fila ${k.n}) como ${k.parentesco||'sin parentesco'}; coincide por ${d.crit.toLowerCase()}.`);
+    n.act.push(`Borrar este registro y conservar el de ${kf}.`);
+    const wholeFam=p.f&&famDelete.has(p.f);
+    if(d.tie&&!wholeFam){ bump(n,'Alta'); n.obs.push('Es representante en ambas familias.'); n.act.push(`Confirmar con el equipo en cuál familia vive actualmente antes de eliminar.`); }
+    const at=X.byPerson.get(p)||[], atK=X.byPerson.get(k)||[];
+    if(at.length){ bump(n,'Media'); n.act.push(`Reasignar ${attTxt(at)} (${at.slice(0,4).map(x=>x.code).join(', ')}${at.length>4?'…':''}) a ${k.name} de ${kf}.`);
+      if(atK.length){ bump(n,'Alta'); n.obs.push(`Ambas versiones tienen atenciones (esta: ${attTxt(at)}; la que se conserva: ${attTxt(atK)}); revisar que no estén duplicadas al unificarlas.`); } }
+    if(!X.indChecked){ n.pending=true; n.obs.push('PENDIENTE: no se cargaron los formularios de atenciones individuales (salud, salud mental, protección, psicosocial); verificar si esta persona tiene atenciones antes de eliminarla.'); }
+    const f=p.f; if(!f) return;
+    if(famDelete.has(f)) return;
+    const rest=members(f).filter(x=>!del.has(x));
+    if(isL(p)&&!rest.some(isL)){ const adults=rest.filter(x=>x.age!=null&&x.age>=18).sort((a,b)=>{ const ia=REL_PREF.indexOf(a.rel), ib=REL_PREF.indexOf(b.rel); return (ia<0?99:ia)-(ib<0?99:ib)||b.age-a.age; });
+      if(adults.length){ bump(n,'Media'); n.obs.push(`Es el representante de ${f.code}.`); n.act.push(`Al eliminarlo, la familia queda sin representante: asignar como representante a ${adults[0].name} (${ageTxt(adults[0])}, ${adults[0].parentesco||'sin parentesco'}).`);
+        const nn=note(notes,adults[0]); nn.cells.add('parentesco'); bump(nn,'Corrección'); nn.obs.push(`Su representante (${p.name}) se elimina por estar duplicado en ${kf}.`); nn.act.push('Asignarle la categoría de representante / líder del grupo.'); }
+      else { bump(n,'Alta'); n.obs.push(`Es el representante de ${f.code} y en la familia solo quedarían menores de edad (${rest.map(x=>`${x.name}, ${ageTxt(x)}`).join('; ')}).`);
+        n.act.push(`No eliminar sin antes trasladar a esos menores a ${kf} (con ${k.name}) o registrar a un adulto responsable como representante.`); } }
+  });
+  // 3) Familias que quedan vacías
+  famDelete.forEach(f=>{ const n=note(famNotes,f), ms=members(f); n.red=true; bump(n,'Baja');
+    n.obs.push(`Todos sus integrantes están registrados en otras familias: ${ms.map(p=>`${p.name} → ${del.get(p).keep.f?del.get(p).keep.f.code:'(sin familia)'}`).join('; ')}.`);
+    n.act.push('Borrar la familia (después de borrar a sus integrantes duplicados).');
+    const kits=X.byFamKits.get(f.num)||[], to=[...new Set(ms.map(p=>del.get(p).keep.f&&del.get(p).keep.f.code).filter(Boolean))];
+    if(kits.length){ bump(n,'Media'); n.act.push(`Antes de eliminarla, reasignar ${attTxt(kits)} (${kits.slice(0,4).map(x=>x.code).join(', ')}${kits.length>4?'…':''}) a ${to.join(' o ')}.`); }
+    if(!X.famChecked){ n.pending=true; n.obs.push('PENDIENTE: no se cargaron los formularios de entrega de kits (NFI y WASH); verificar si la familia recibió entregas antes de eliminarla.'); }
+    ms.forEach(p=>{ const pn=note(notes,p); if(!pn.act.some(a=>a.includes('la familia completa'))) pn.act.push(`La familia ${f.code} completa debe eliminarse (ver pestaña vzl_cases).`); });
+  });
+  // 4) Correcciones (celdas en amarillo) para registros que se conservan
+  const keepP=p=>!del.has(p);
+  E.birth.forEach(x=>{ if(!keepP(x.p)) return; const n=note(notes,x.p); bump(n,'Corrección'); n.cells.add('birth'); if(/representante|pareja|hijo|nieto|padre|abuelo/i.test(x.prob)) n.cells.add('parentesco');
+    n.obs.push(x.prob+'.'); n.act.push(/representante|pareja|hijo|nieto|padre|abuelo/i.test(x.prob)?'Revisar la fecha de nacimiento o el parentesco.':'Corregir la fecha de nacimiento.'); });
+  // Las cédulas con formato no válido (0000000, 9999999, etc.) no se resaltan: ya se excluyen de la detección de duplicados.
+  E.idConflict.forEach(x=>{ const ps=x.ps.filter(keepP); if(ps.length<2) return; ps.forEach(p=>{ const n=note(notes,p); bump(n,'Corrección'); n.cells.add('idno'); n.cells.add('name');
+    n.obs.push(`La cédula ${x.id} también la tiene ${ps.filter(o=>o!==p).map(o=>`${o.name} (${o.f?o.f.code:'sin familia'})`).join(', ')}.`); n.act.push('Verificar a quién pertenece la cédula y corregir la otra.'); }); });
+  E.leader.forEach(x=>{ if(famDelete.has(x.f)) return; const ms=x.ps.filter(keepP);
+    if(x.prob.startsWith('Sin')){ if(ms.some(isL)) return; const n=note(famNotes,x.f); bump(n,'Corrección'); n.cells.add('code'); n.obs.push('Familia sin representante / líder del grupo.');
+      const ad=ms.filter(p=>p.age!=null&&p.age>=18).sort((a,b)=>b.age-a.age); n.act.push(ad.length?`Asignar como representante a ${ad[0].name} (${ageTxt(ad[0])}).`:'Asignar un representante adulto; la familia solo tiene menores o personas sin edad válida.'); }
+    else { const L=ms.filter(isL); if(L.length<2) return; L.forEach(p=>{ const n=note(notes,p); bump(n,'Corrección'); n.cells.add('parentesco'); n.obs.push(`La familia ${x.f.code} tiene ${L.length} representantes.`); n.act.push('Dejar un solo representante y corregir el parentesco de los demás.'); }); } });
+  E.famNoPers.forEach(f=>{ const n=note(famNotes,f); bump(n,'Corrección'); n.cells.add('code'); n.obs.push('Familia sin integrantes registrados.'); n.act.push('Registrar a sus integrantes o eliminar la familia.'); });
+  E.persNoFam.forEach(p=>{ const n=note(notes,p); bump(n,'Corrección'); n.cells.add('fam'); n.obs.push(`Su código de familia (Excel Index ${p.fam??'vacío'}) no existe en vzl_cases.`); n.act.push('Corregir el código de familia o eliminar el registro.'); });
+  E.badCode.forEach(x=>{ const n=note(famNotes,x.f); bump(n,'Corrección'); n.cells.add('code'); n.obs.push(x.prob+'.'); n.act.push('Corregir el código de la familia.'); });
+  return {notes,famNotes,dupRows,X,del,famDelete};
+}
+/* Escritor XLSX ligero con estilos (para archivos grandes): genera el XML directamente y lo comprime con el ZIP de SheetJS */
+const XW_STYLES=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts>
+<fonts count="9"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF8A1C24"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF8A3B00"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF0033A0"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF5A4A00"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF0F2E12"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF3A2400"/><name val="Calibri"/></font></fonts>
+<fills count="10"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${['FFF8D3D7','FFFFF2B8','FFFFE0B2','FF0033A0','FFBFE5C2','FFF4A23C','FFC62828','FFF1F3F6'].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="${c}"/><bgColor indexed="64"/></patternFill></fill>`).join('')}</fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="18">${[[0,0,0,0],[1,5,0,1],[2,2,0,0],[2,2,164,0],[0,3,0,0],[0,3,164,0],[0,0,164,0],[2,2,0,1],[0,3,0,1],[3,4,0,1],[0,0,0,1],[7,6,0,1],[8,7,0,1],[1,8,0,1],[6,3,0,1],[4,0,0,0],[5,0,0,0],[0,9,0,0]]
+  .map(([f,fi,n,w])=>`<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="0" xfId="0"${f?' applyFont="1"':''}${fi?' applyFill="1"':''}${n?' applyNumberFormat="1"':''}${w?' applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>':'/>'}`).join('')}</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+/* Estilos: 0 normal · 1 encabezado · 2 rojo · 3 rojo fecha · 4 amarillo · 5 amarillo fecha · 6 fecha · 7 texto rojo · 8 texto amarillo · 9 pendiente naranja · 10 texto · 11 verde · 12 ámbar · 13 rojo fuerte · 14 corregir · 15 negrita · 16 título · 17 gris */
+const xwEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
+function xwSheet(sh){ // sh: {cols:[ancho], rows:[[[valor,estilo]]], freeze:{x,y}, filter:n}
+  const out=[], nc=Math.max(1,...sh.rows.map(r=>r.length)), last=XLSX.utils.encode_col(nc-1);
+  out.push(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`);
+  if(sh.freeze){ const {x=0,y=0}=sh.freeze; out.push(`<sheetViews><sheetView workbookViewId="0"><pane${x?` xSplit="${x}"`:''}${y?` ySplit="${y}"`:''} topLeftCell="${XLSX.utils.encode_col(x)}${y+1}" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>`); }
+  if(sh.cols) out.push(`<cols>${sh.cols.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`);
+  out.push('<sheetData>');
+  sh.rows.forEach((r,ri)=>{ const cells=[]; r.forEach((c,ci)=>{ if(!c) return; const [v,s]=c; if((v==null||v==='')&&!s) return; const ref=XLSX.utils.encode_col(ci)+(ri+1), st=s?` s="${s}"`:'';
+      if(v==null||v==='') cells.push(`<c r="${ref}"${st}/>`); else if(typeof v==='number'&&isFinite(v)) cells.push(`<c r="${ref}"${st}><v>${v}</v></c>`); else cells.push(`<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xwEsc(v)}</t></is></c>`); });
+    out.push(`<row r="${ri+1}">${cells.join('')}</row>`); });
+  out.push('</sheetData>');
+  if(sh.filter) out.push(`<autoFilter ref="A1:${last}${sh.rows.length}"/>`);
+  out.push('</worksheet>'); return out;
+}
+/* ZIP mínimo con compresión nativa del navegador (CompressionStream); respaldo: ZIP de SheetJS */
+const CRC_T=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRC_T[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+async function deflateRaw(b){ const cs=new CompressionStream('deflate-raw'); return new Uint8Array(await new Response(new Blob([b]).stream().pipeThrough(cs)).arrayBuffer()); }
+function concatU8(chunks){ const len=chunks.reduce((t,c)=>t+c.length,0), out=new Uint8Array(len); let o=0; chunks.forEach(c=>{ out.set(c,o); o+=c.length; }); return out; }
+async function zipParts(parts){ // parts: [{name, data:Uint8Array}] (se genera de a uno para ahorrar memoria)
+  const enc=new TextEncoder(), out=[], cd=[]; let off=0;
+  const u16=v=>[v&255,(v>>>8)&255], u32=v=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];
+  for(const p of parts){ const data=typeof p.data==='function'?p.data():p.data, name=enc.encode(p.name), crc=crc32(data), comp=await deflateRaw(data);
+    const head=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(8),...u16(0),...u16(0x21),...u32(crc),...u32(comp.length),...u32(data.length),...u16(name.length),...u16(0)]);
+    out.push(head,name,comp);
+    cd.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(8),...u16(0),...u16(0x21),...u32(crc),...u32(comp.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),name);
+    off+=head.length+name.length+comp.length; }
+  const cdSize=cd.reduce((t,c)=>t+c.length,0);
+  out.push(...cd,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(parts.length),...u16(parts.length),...u32(cdSize),...u32(off),...u16(0)]));
+  return new Blob(out,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+async function xwBook(sheets){
+  const enc=new TextEncoder(), S2=s=>enc.encode(s);
+  const meta=[
+    ['[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+    ['_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${xwEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${sheets.some(s=>s.filter)?`<definedNames>${sheets.map((s,i)=>s.filter?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xwEsc(s.name)}'!$A$1:$${XLSX.utils.encode_col(Math.max(1,...s.rows.map(r=>r.length))-1)}$${s.rows.length}</definedName>`:'').join('')}</definedNames>`:''}</workbook>`],
+    ['xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml',XW_STYLES]].map(([n,x])=>({name:n,data:S2(x)}));
+  const sheetParts=sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`,data:()=>concatU8(xwSheet(s).map(S2))}));
+  if(typeof CompressionStream!=='undefined'){ try{ new CompressionStream('deflate-raw'); return await zipParts([...meta,...sheetParts]); }catch(e){ console.warn('CompressionStream deflate-raw no disponible',e); } }
+  const cfb=XLSX.CFB.utils.cfb_new(); [...meta,...sheetParts].forEach(p=>XLSX.CFB.utils.cfb_add(cfb,p.name,typeof p.data==='function'?p.data():p.data));
+  return new Blob([XLSX.CFB.write(cfb,{type:'array',fileType:'zip',compression:true})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+const SEV_LABEL={'Baja':'Se puede borrar','Media':'Revisar antes de borrar','Alta':'Caso complejo: consultar antes de borrar','Corrección':'Corregir dato'};
+const SEV_STYLE={'Baja':11,'Media':12,'Alta':13,'Corrección':14};
+async function regCleanExport(D,att){
+  const P=regCleanPlan(D,att), C=D.sheets.cases, B=D.sheets.benef, fname=`Registro_Familias_Limpieza_${TODAY_YMD}.xlsx`;
+  const red=[...P.notes.values()].filter(n=>n.red), cnt=s=>red.filter(n=>n.sev===s).length;
+  const T=(v,s=0)=>[v,s];
+  const resumen=[[T('Limpieza del Registro de Familias',16)],[T(`${D.file} · Generado el ${dmy(TODAY_YMD)}`)],[],
+    [T('Concepto',1),T('Valor',1)],
+    [T('Personas a borrar (duplicadas)',15),T(P.del.size)],[T(`· ${SEV_LABEL.Baja}`),T(cnt('Baja'))],[T(`· ${SEV_LABEL.Media}`),T(cnt('Media'))],[T(`· ${SEV_LABEL.Alta}`),T(cnt('Alta'))],
+    [T('Familias a borrar (todos sus integrantes están en otras familias)',15),T(P.famDelete.size)],
+    [T('Personas con datos a corregir',15),T([...P.notes.values()].filter(n=>!n.red).length)],[T('Familias con datos a corregir',15),T([...P.famNotes.values()].filter(n=>!n.red).length)],
+    [T('Cruce con atenciones individuales',15),P.X.indChecked?T(`Realizado (${P.X.forms.ind.join(', ')})`):T('PENDIENTE: no se cargaron formularios de atenciones',9)],
+    [T('Cruce con entregas de kits',15),P.X.famChecked?T(`Realizado (${P.X.forms.fam.join(', ')})`):T('PENDIENTE: no se cargaron formularios de kits',9)],[],
+    [T('Colores',1),T('',1)],[T('',2),T('Fila en rojo: registro a borrar. La columna «Acción sugerida» indica si se puede borrar de inmediato o si antes hay que hacer algo.',10)],
+    [T('',4),T('Celda en amarillo: dato a corregir. La explicación está en «Observaciones» y «Qué hacer».',10)],[T('',9),T('Naranja: revisión pendiente porque no se cargaron los formularios de asistencias.',10)],[],
+    [T('Acción sugerida',1),T('Significado',1)],
+    [T(SEV_LABEL.Baja,11),T('Duplicado que no es representante, sin atenciones y cuya familia no queda vacía.',10)],
+    [T(SEV_LABEL.Media,12),T('Antes de borrar hay que asignar un nuevo representante adulto o reasignar atenciones o entregas a la persona o familia que se conserva.',10)],
+    [T(SEV_LABEL.Alta,13),T('La familia quedaría solo con menores, la persona es representante en ambas familias o ambas versiones tienen atenciones. Revisar con el equipo antes de borrar.',10)],
+    [T(SEV_LABEL['Corrección'],14),T('No se borra: hay que corregir el dato resaltado.',10)]];
+  const dateCol=l=>/fecha|date/i.test(l);
+  const build=(sh,map)=>{ const lab=sh.labels, isD=lab.map(dateCol);
+    const rows=[[T('Estado de revisión',1),T('Fila original',1),T('Acción sugerida',1),T('Observaciones',1),T('Qué hacer',1),...lab.map(l=>T(l,1))]];
+    const byN=new Map(); map.forEach((n,o)=>byN.set(o.n,n));
+    sh.rows.forEach(x=>{ const n=byN.get(x.n), raw=x.r;
+      if(!n){ rows.push([T('Sin observaciones',17),T(x.n),null,null,null,...lab.map((_,i)=>raw[i]==null||raw[i]===''?null:T(raw[i],isD[i]&&typeof raw[i]==='number'?6:0))]); return; }
+      const cellIdx=new Set([...n.cells].map(k=>sh.idx[k]).filter(i=>i>=0));
+      const cs=i=>{ const v=raw[i]; const d=isD[i]&&typeof v==='number'; if(n.red) return d?3:2; if(cellIdx.has(i)) return d?5:4; return d?6:0; };
+      rows.push([T('Con observaciones',15),T(x.n,n.red?2:0),T(n.red?SEV_LABEL[n.sev]:SEV_LABEL['Corrección'],n.red?SEV_STYLE[n.sev]:14),T(n.obs.join(' '),n.pending?9:n.red?7:8),T(n.act.join(' '),n.red?7:8),...lab.map((_,i)=>T(raw[i]??null,cs(i)))]); });
+    return {cols:[18,10,24,60,60,...lab.map(l=>Math.min(30,Math.max(11,String(l).length*0.9)))],rows,freeze:{x:3,y:1},filter:true}; };
+  const dup=[[T('Grupo',1),T('Decisión',1),T('Código de familia',1),T('Fila',1),T('Nombres completos',1),T('Parentesco',1),T('Fecha de nacimiento',1),T('Cédula',1),T('Atenciones',1),T('Motivo',1)],
+    ...P.dupRows.map(v=>{ const s=v[1]==='Eliminar'?2:0; return v.map((x,i)=>T(i===6&&x?serial(x):(i===1?(x==='Eliminar'?'Borrar':'Conservar'):x),i===6&&x?(s?3:6):(i===9?(s?7:10):s))); })];
+  busy(true); await nextFrame();
+  const blob=await xwBook([{name:'Resumen',cols:[60,90],rows:resumen},{name:'vzl_cases',...build(C,P.famNotes)},{name:'beneficiaries_vzl',...build(B,P.notes)},{name:'Duplicados (detalle)',cols:[9,11,17,8,32,24,14,16,12,70],rows:dup,freeze:{y:1},filter:true}]);
+  await saveFile(fname,blob);
+}
+/* Formularios de atenciones cargados en el modo de archivo único para el cruce */
+async function famLoadAtt(files){
+  busy(true); await nextFrame();
+  try{ S.famAtt=S.famAtt||[];
+    for(const f of files){ const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}), t=detectForm(wb);
+      if(!(ATT_CFG[t]||t==='nfi'||t==='wash')){ toast(`${f.name} no es un formulario de atenciones o de kits.`); continue; }
+      const obj=t==='nfi'||t==='wash'?nfiLoad(wb,f.name,S.fam,t):salLoad(wb,f.name,S.fam,t);
+      if(obj.fatal&&obj.fatal.length){ toast(`A ${f.name} le faltan columnas.`); continue; }
+      S.famAtt=S.famAtt.filter(x=>x.type!==t); S.famAtt.push({type:t,label:mmLabel(t),file:f.name,obj}); }
+  }catch(e){ console.error(e); toast('No se pudo leer el archivo: '+(e.message||e)); } finally{ busy(false); render(); }
+}
 
 /* ============ Tema claro / oscuro ============ */
 const THEME_KEY='depurador-ims-tema';
